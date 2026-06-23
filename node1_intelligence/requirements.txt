@@ -1,0 +1,9 @@
+# Node 1 — Regulatory Intelligence Engine
+# Offline by default (taxonomy classifier). httpx is only used when the optional
+# LLM enrichment is enabled via NODE1_LLM_URL.
+fastapi>=0.110
+uvicorn>=0.27
+pydantic>=2.5
+httpx>=0.27
+# Semantic similarity via the shared arc_vector store (Ollama embeddings + ChromaDB).
+chromadb>=1.0

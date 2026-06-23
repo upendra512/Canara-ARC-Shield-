@@ -9,6 +9,7 @@ VerificationResult objects matching backend/src/types/domain.ts.
 Run:  uvicorn node3_verification_engine.api:app --port 8003
 """
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime
@@ -63,6 +64,7 @@ class VerificationResultOut(BaseModel):
     mapId: str
     status: str
     score: float
+    verifiedBy: str
     evidence: List[Evidence]
 
 
@@ -74,10 +76,11 @@ async def health():
 @app.post("/verify", response_model=List[VerificationResultOut])
 async def verify(req: VerifyRequest) -> List[VerificationResultOut]:
     now_iso = datetime.utcnow().isoformat() + "Z"
-    results: List[VerificationResultOut] = []
 
-    for m in req.maps:
-        verdict = _engine.verify_map(m.model_dump(), now_iso)
-        results.append(VerificationResultOut(id=str(uuid.uuid4()), **verdict))
+    # MAPs are verified concurrently; each verdict is deterministic and
+    # independent, so parallel execution is order-stable and side-effect free.
+    verdicts = await asyncio.gather(
+        *[asyncio.to_thread(_engine.verify_map, m.model_dump(), now_iso) for m in req.maps]
+    )
 
-    return results
+    return [VerificationResultOut(id=str(uuid.uuid4()), **verdict) for verdict in verdicts]

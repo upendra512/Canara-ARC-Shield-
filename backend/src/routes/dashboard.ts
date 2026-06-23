@@ -16,6 +16,13 @@ dashboardRouter.get(
 const ROLES: Role[] = ["compliance", "it", "cxo", "auditor"];
 
 dashboardRouter.get(
+  "/review-queue",
+  asyncHandler(async (_req, res) => {
+    sendOk(res, await dashboardService.reviewQueue());
+  }),
+);
+
+dashboardRouter.get(
   "/role/:role",
   asyncHandler(async (req, res) => {
     const role = param(req, "role") as Role;

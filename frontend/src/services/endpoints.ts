@@ -5,6 +5,7 @@ import type {
   ReferenceGraph,
   DashboardSummary,
   RoleWorkspace,
+  ReviewQueue,
   LedgerBlock,
   ChainVerification,
   CopilotAnswer,
@@ -23,6 +24,8 @@ export const getDashboardSummary = () => get<DashboardSummary>("/dashboard/summa
 
 export const getRoleWorkspace = (role: Role) =>
   get<RoleWorkspace>(`/dashboard/role/${role}`, role);
+
+export const getReviewQueue = () => get<ReviewQueue>("/dashboard/review-queue");
 
 export const getChain = () => get<LedgerBlock[]>("/ledger/chain");
 

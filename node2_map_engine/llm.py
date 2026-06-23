@@ -115,6 +115,38 @@ class RuleBasedAnalyzer:
             else:
                 return "Regulatory requirement modified"
     
+    def _compute_confidence(self, old_text: str, new_text: str, diff_text: str,
+                            change_type: str, impact: str) -> float:
+        """Confidence the rule-based verdict reflects a real, well-understood change.
+
+        Low confidence routes a MAP to the human review queue. We are most certain
+        when we can see a concrete numeric delta against a known prior clause, and
+        least certain about brand-new clauses with no historical baseline or weak
+        regulatory signal.
+        """
+        combined = (old_text + " " + new_text + " " + diff_text).lower()
+        critical_hits = sum(1 for kw in self.CRITICAL_KEYWORDS if kw in combined)
+        pct_change, _ = self._calculate_numeric_change(old_text, new_text)
+
+        if change_type == "ADDED":
+            # No prior clause to diff against; impact is inferred, not measured.
+            score = 0.6 + min(0.1, 0.03 * critical_hits)
+        elif change_type == "REMOVED":
+            score = 0.7
+        elif pct_change > 0:
+            # A measurable numeric change is the strongest signal we have.
+            score = 0.9 if pct_change >= 10 else 0.82
+        else:
+            # Wording-only modification: lean on regulatory keyword density.
+            score = 0.6 + 0.08 * critical_hits
+
+        if impact in ("HIGH", "CRITICAL") and critical_hits >= 2:
+            score += 0.05
+        if impact == "LOW" and critical_hits == 0:
+            score -= 0.1
+
+        return round(max(0.4, min(0.95, score)), 2)
+
     async def evaluate_diff(self, old_text: str, new_text: str, diff_text: str) -> Dict[str, Any]:
         """
         Analyzes regulatory changes using pure rule-based logic.
@@ -139,7 +171,7 @@ class RuleBasedAnalyzer:
             "change_reason": reason,
             "impact": impact,
             "summary": summary,
-            "confidence": 0.92  # High confidence for rule-based analysis
+            "confidence": self._compute_confidence(old_text, new_text, diff_text, change_type, impact)
         }
         
         logger.info(f"✓ Analysis complete: {change_type} - {impact} impact - Confidence: {result['confidence']}")

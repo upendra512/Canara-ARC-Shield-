@@ -5,7 +5,7 @@ import {
   CheckCircle, FileText, Hash, Database, Send, RefreshCw,
   Download, ArrowRight, AlertCircle, Award, Zap, Building2,
   Globe, Fingerprint, GitBranch, ChevronRight, Eye, Cpu,
-  Plus, Calendar, Filter, Upload, Link2, XCircle,
+  Plus, Calendar, Filter, Upload, Link2, XCircle, User,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -33,6 +33,7 @@ const NAV = [
   { id: "copilot",   icon: MessageSquare,   label: "Compliance Copilot", badge: "AI" },
   { id: "blockchain",icon: ShieldCheck,     label: "Blockchain Trust Center" },
   { id: "roles",     icon: Users,           label: "Role Workspace" },
+  { id: "review",    icon: AlertCircle,     label: "Review Queue" },
   { id: "security",  icon: Lock,            label: "Security & Trust" },
 ];
 
@@ -56,6 +57,22 @@ function impactColor(impact: Impact): string {
   if (impact === "HIGH") return ER;
   if (impact === "MEDIUM") return WN;
   return OK;
+}
+
+function verdictColor(status: string): string {
+  if (status === "PASS") return OK;
+  if (status === "FAIL") return ER;
+  return WN;
+}
+
+function agentLabel(verifiedBy: string): string {
+  return verifiedBy === "technical" ? "Technical Agent" : "Policy Agent";
+}
+
+function agentBadgeStyle(verifiedBy: string) {
+  return verifiedBy === "technical"
+    ? { background: `${CB}10`, color: CB }
+    : { background: `${CY}25`, color: "#7a5200" };
 }
 
 function circularStatus(stage: PipelineStage): "active" | "warning" | "complete" {
@@ -82,7 +99,7 @@ function Sidebar({ active, setActive }: { active: string; setActive: (s: string)
           <div className="font-extrabold text-[13px] tracking-wider leading-none" style={{ color: CB, fontFamily: "Barlow, sans-serif" }}>
             ARC SHIELD
           </div>
-          <div className="text-[9px] text-muted-foreground mt-0.5 tracking-widest uppercase">Canara Bank · v2.4.1</div>
+          <div className="text-[9px] text-muted-foreground mt-0.5 tracking-widest uppercase">Canara Bank</div>
         </div>
       </div>
 
@@ -119,12 +136,12 @@ function Sidebar({ active, setActive }: { active: string; setActive: (s: string)
 
       <div className="p-3 border-t border-border shrink-0">
         <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-secondary cursor-pointer transition-colors">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shrink-0" style={{ background: CB }}>
-            RK
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: CB }}>
+            <User size={13} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-semibold text-foreground truncate">Rajesh Kumar</div>
-            <div className="text-[10px] text-muted-foreground">Compliance Officer</div>
+            <div className="text-[12px] font-semibold text-foreground truncate">Compliance Officer</div>
+            <div className="text-[10px] text-muted-foreground">Signed in</div>
           </div>
           <Settings size={12} className="text-muted-foreground shrink-0" />
         </div>
@@ -354,6 +371,9 @@ function CircularDetail({ circular }: { circular: Circular }) {
   const refs = useApi(() => api.getReferences(circular.id), [circular.id]);
   const clauses = pipeline.data?.intelligence?.clauses ?? [];
   const similar = pipeline.data?.intelligence?.similarTo ?? null;
+  const maps = pipeline.data?.maps ?? [];
+  const verifications = pipeline.data?.verifications ?? [];
+  const mapById = new Map(maps.map(m => [m.id, m]));
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -451,6 +471,31 @@ function CircularDetail({ circular }: { circular: Circular }) {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+      </div>
+
+      {/* Verifications — Node 3 dual-agent verdicts */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold" style={{ fontFamily: "Barlow, sans-serif", color: "#0a1628" }}>Verification</h3>
+          {verifications.length > 0 && <span className="text-[10px] text-muted-foreground">{verifications.length} verdicts</span>}
+        </div>
+        {pipeline.loading ? <Loading />
+          : verifications.length === 0 ? <EmptyState title="No verifications yet" sub="MAPs are verified by Node 3's Technical and Policy agents once mapping completes." />
+          : (
+            <div className="space-y-1.5">
+              {verifications.map(v => {
+                const m = mapById.get(v.mapId);
+                return (
+                  <div key={v.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-md border border-border bg-white">
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded shrink-0 text-white" style={{ background: verdictColor(v.status) }}>{v.status}</span>
+                    <span className="text-[12.5px] flex-1" style={{ fontFamily: "Inter" }}>{m?.summary ?? v.mapId}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0" style={agentBadgeStyle(v.verifiedBy)}>{agentLabel(v.verifiedBy)}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">{Math.round(v.score * 100)}%</span>
+                  </div>
+                );
+              })}
             </div>
           )}
       </div>
@@ -651,7 +696,7 @@ function ComplianceCopilot() {
               <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9.5px] font-extrabold shrink-0 text-white"
                   style={{ background: m.role === "ai" ? (m.error ? ER : CB) : "#64748b" }}>
-                  {m.role === "ai" ? "AI" : "RK"}
+                  {m.role === "ai" ? "AI" : <User size={13} />}
                 </div>
                 <div className={`max-w-[76%] flex flex-col gap-1.5 ${m.role === "user" ? "items-end" : "items-start"}`}>
                   <div className="rounded-xl px-4 py-3 text-[12.5px] leading-relaxed"
@@ -917,6 +962,56 @@ function RoleWorkspace() {
   );
 }
 
+/* ─── REVIEW QUEUE ──────────────────────────────────────────────────────── */
+
+function ReviewQueuePage() {
+  const { data, loading, error, reload } = useApi(() => api.getReviewQueue(), []);
+
+  return (
+    <div className="flex flex-col h-full overflow-auto">
+      <PageHeader title="Human Review Queue" sub="Low-confidence MAPs the engine flagged for a human decision">
+        <button onClick={reload} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11.5px] font-semibold text-white" style={{ background: CB }}>
+          <RefreshCw size={12} /> Refresh
+        </button>
+      </PageHeader>
+
+      <div className="flex-1 p-6 space-y-5">
+        {loading && <Loading label="Loading review queue…" />}
+        {error && <ErrorState message={error} onRetry={reload} />}
+        {data && (
+          <>
+            <div className="grid grid-cols-3 gap-4">
+              <KPICard label="Awaiting Review" value={String(data.count)} sub="below confidence threshold" color={WN} Icon={AlertCircle} />
+            </div>
+
+            <div className="bg-white border border-border rounded-lg p-5">
+              <h3 className="text-sm font-bold mb-4" style={{ fontFamily: "Barlow", color: "#0a1628" }}>Flagged MAPs</h3>
+              {data.items.length === 0 ? (
+                <EmptyState title="Queue is clear" sub="No MAPs need human review. High-confidence mappings are auto-approved." />
+              ) : (
+                <div className="space-y-2">
+                  {data.items.map(m => (
+                    <div key={m.id} className="flex items-center gap-4 px-3.5 py-2.5 rounded-md border border-border hover:bg-secondary/30 transition-colors">
+                      <span className="font-mono text-[10.5px] font-bold shrink-0" style={{ color: CB }}>{m.id}</span>
+                      <span className="text-[8.5px] font-extrabold px-1.5 py-0.5 rounded shrink-0" style={{ background: `${impactColor(m.impact)}14`, color: impactColor(m.impact) }}>{m.impact}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] text-foreground truncate">{m.summary}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{m.circularTitle}</div>
+                      </div>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: `${CB}10`, color: CB }}>{m.category}</span>
+                      <span className="font-mono text-[10.5px] font-bold shrink-0" style={{ color: WN }}>{Math.round(m.confidence * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── SECURITY PAGE ─────────────────────────────────────────────────────── */
 
 const SEC_FEATURES = [
@@ -968,6 +1063,7 @@ export default function App() {
         {active === "copilot"    && <ComplianceCopilot />}
         {active === "blockchain" && <BlockchainTrustCenter />}
         {active === "roles"      && <RoleWorkspace />}
+        {active === "review"     && <ReviewQueuePage />}
         {active === "security"   && <SecurityPage />}
       </main>
     </div>
