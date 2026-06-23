@@ -76,6 +76,7 @@ export interface VerificationResult {
   mapId: string;
   status: VerificationStatus;
   score: number;
+  verifiedBy: MapCategory;
   evidence: { kind: string; ref: string; timestamp: string }[];
 }
 
@@ -143,6 +144,15 @@ export interface RoleWorkspace {
   role: Role;
   maps: ComplianceMap[];
   verifications: VerificationResult[];
+}
+
+export interface ReviewQueueItem extends ComplianceMap {
+  circularTitle: string;
+}
+
+export interface ReviewQueue {
+  count: number;
+  items: ReviewQueueItem[];
 }
 
 export interface Citation {

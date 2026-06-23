@@ -1,0 +1,4 @@
+# Shared embedding + vector-store layer (imported by Node 1 and Node 2).
+# Embeddings come from a local Ollama model over HTTP (stdlib only); the vector
+# DB is ChromaDB. Pull the embedding model once: `ollama pull nomic-embed-text`.
+chromadb>=1.0

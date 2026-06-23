@@ -15,9 +15,14 @@ interface PipelineJob {
 
 const queue = createQueue<PipelineJob>("pipeline");
 
+const log = (circularId: string, msg: string): void =>
+  console.log(`[pipeline] ${circularId} ${msg}`);
+
 async function runStages(circularId: string): Promise<void> {
+  const startedAt = Date.now();
   const circular = await stateStore.getCircular(circularId);
   if (!circular) throw fail("NOT_FOUND", `Unknown circular ${circularId}`);
+  log(circularId, `START "${circular.document.filename}"`);
 
   const text = await intakeService.extractText(circularId);
   const linked = await stateStore.getLinkedCirculars(circularId);
@@ -29,12 +34,33 @@ async function runStages(circularId: string): Promise<void> {
       text: await intakeService.extractText(c.id),
     })),
   );
+
+  const allCirculars = await stateStore.listCirculars();
+  const corpus = await Promise.all(
+    allCirculars
+      .filter((c) => c.id !== circularId)
+      .slice(-25)
+      .map(async (c) => ({
+        circularId: c.id,
+        refNumber: c.refNumber,
+        title: c.title,
+        text: await intakeService.extractText(c.id).catch(() => ""),
+      })),
+  );
+
+  log(circularId, "CLASSIFYING -> Node 1 (intelligence)...");
   const intelligence = await node1.analyze({
     circularId,
     filename: circular.document.filename,
     text,
-    ...(linkedCirculars.length > 0 ? { context: { linkedCirculars } } : {}),
+    ...(linkedCirculars.length > 0 || corpus.length > 0
+      ? { context: { linkedCirculars, ...(corpus.length > 0 ? { corpus } : {}) } }
+      : {}),
   });
+  log(
+    circularId,
+    `CLASSIFYING done: "${intelligence.title}" [${intelligence.regulator}] ${intelligence.clauses.length} clauses`,
+  );
   await stateStore.transition(circularId, "CLASSIFYING", (r, c) => {
     r.intelligence = intelligence;
     c.title = intelligence.title;
@@ -47,18 +73,22 @@ async function runStages(circularId: string): Promise<void> {
     }
   });
 
+  log(circularId, "MAPPING -> Node 2 (MAP engine)...");
   const maps = await node2.generate({
     circularId,
     regulator: intelligence.regulator,
     circularDate: intelligence.issuedDate,
     clauses: intelligence.clauses,
   });
+  log(circularId, `MAPPING done: ${maps.length} MAP(s)`);
   await ledgerService.recordMapGenerated(circularId, maps);
   await stateStore.transition(circularId, "MAPPING", (r) => {
     r.maps = maps;
   });
 
+  log(circularId, "VERIFYING -> Node 3 (verification)...");
   const verifications = await node3.verify({ circularId, maps });
+  log(circularId, `VERIFYING done: ${verifications.length} verdict(s)`);
   await ledgerService.recordVerification(circularId, verifications);
   await ledgerService.recordEvidence(
     circularId,
@@ -74,6 +104,10 @@ async function runStages(circularId: string): Promise<void> {
     r.auditReceiptHash = receipt.hash;
   });
   dashboardService.invalidate();
+  log(
+    circularId,
+    `COMPLETE sealed=${receipt.hash.slice(0, 12)}... in ${Date.now() - startedAt}ms`,
+  );
 }
 
 queue.process(async ({ circularId }) => {
@@ -81,6 +115,7 @@ queue.process(async ({ circularId }) => {
     await runStages(circularId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    log(circularId, `FAILED: ${message}`);
     await stateStore
       .transition(circularId, "FAILED", (r) => {
         r.error = message;

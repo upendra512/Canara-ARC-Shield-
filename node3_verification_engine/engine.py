@@ -9,6 +9,12 @@ seeded controls knowledge base (controls_db.json) and emits a verdict:
   - missing control      -> FAIL    (a known gap)
   - no matching control  -> REVIEW  (nothing to verify against; needs a human)
 
+Two specialised agents share this core: a Technical Compliance Agent verifies
+Category A (system/config) MAPs and biases toward system_config evidence, while
+a Policy Compliance Agent verifies Category B (document/policy) MAPs and biases
+toward policy_document / control_attestation evidence. A MAP is dispatched to an
+agent by its category, and the verdict records which agent produced it.
+
 Deterministic by design: the same MAP always yields the same verdict, so the
 audit trail holds. No LLM, no internet.
 """
@@ -47,18 +53,29 @@ class ControlsRepository:
         return list(self._controls.values())
 
 
-class VerificationEngine:
+class _BaseComplianceAgent:
+    """Shared verification core. Subclasses declare a name and the evidence kinds
+    they trust most, which breaks ties toward controls of the right shape."""
+
+    name: str = "policy"
+    preferred_evidence_kinds: set = set()
+
     def __init__(self, repo: Optional[ControlsRepository] = None):
         self.repo = repo or ControlsRepository()
 
     def _best_control(self, department: str, text: str) -> Tuple[Optional[Dict[str, Any]], int]:
-        """Pick the control with the most keyword hits; department match breaks ties."""
+        """Pick the control with the most keyword hits; department match and this
+        agent's preferred evidence kind break ties."""
         terms = _tokenize(text)
         best: Optional[Dict[str, Any]] = None
         best_score = 0
         for control in self.repo.all():
             hits = sum(1 for kw in control.get("keywords", []) if kw in terms)
+            if hits == 0:
+                continue
             if department and control.get("department") == department:
+                hits += 1
+            if control.get("evidence_kind") in self.preferred_evidence_kinds:
                 hits += 1
             if hits > best_score:
                 best, best_score = control, hits
@@ -88,5 +105,35 @@ class VerificationEngine:
             "mapId": map_obj["id"],
             "status": status,
             "score": round(score, 2),
+            "verifiedBy": self.name,
             "evidence": evidence,
         }
+
+
+class TechnicalComplianceAgent(_BaseComplianceAgent):
+    """Verifies Category A MAPs (system / configuration changes)."""
+
+    name = "technical"
+    preferred_evidence_kinds = {"system_config"}
+
+
+class PolicyComplianceAgent(_BaseComplianceAgent):
+    """Verifies Category B MAPs (policy / document changes)."""
+
+    name = "policy"
+    preferred_evidence_kinds = {"policy_document", "control_attestation"}
+
+
+class VerificationEngine:
+    """Dispatches each MAP to the agent that owns its category."""
+
+    def __init__(self, repo: Optional[ControlsRepository] = None):
+        repo = repo or ControlsRepository()
+        self.technical = TechnicalComplianceAgent(repo)
+        self.policy = PolicyComplianceAgent(repo)
+
+    def _agent_for(self, category: Optional[str]) -> _BaseComplianceAgent:
+        return self.technical if (category or "").strip().lower() == "technical" else self.policy
+
+    def verify_map(self, map_obj: Dict[str, Any], now_iso: str) -> Dict[str, Any]:
+        return self._agent_for(map_obj.get("category")).verify_map(map_obj, now_iso)

@@ -76,12 +76,34 @@ _DEPARTMENT_TO_ROLE = {
 # Cyber/IT obligations are technical controls; the rest are policy obligations.
 _TECHNICAL_SECTIONS = {"cyber", "it risk", "information security", "infosec"}
 
+# Content signals that override the section-based default. A treasury threshold
+# change is a system/config change (Cat A) even though its section is "policy";
+# an InfoSec SOP rewrite is a document change (Cat B) despite a technical section.
+_TECHNICAL_SIGNALS = {
+    "password", "threshold", "limit", "configuration", "config", "parameter",
+    "mfa", "encryption", "api", "database", "system", "ratio", "value",
+}
+_POLICY_SIGNALS = {
+    "sop", "policy", "governance", "documentation", "procedure", "board",
+    "framework", "disclosure",
+}
+
 
 def _role_for(department: str) -> str:
     return _DEPARTMENT_TO_ROLE.get(department, "compliance")
 
 
-def _category_for(section: str) -> str:
+def _category_for(section: str, text: str = "") -> str:
+    """Technical (Cat A, system/config change) vs Policy (Cat B, document change).
+
+    Content wins when it gives a clear signal; otherwise we fall back to the
+    section the clause was classified under.
+    """
+    hay = text.lower()
+    tech = sum(1 for kw in _TECHNICAL_SIGNALS if kw in hay)
+    policy = sum(1 for kw in _POLICY_SIGNALS if kw in hay)
+    if tech != policy:
+        return "technical" if tech > policy else "policy"
     return "technical" if section.strip().lower() in _TECHNICAL_SECTIONS else "policy"
 
 
@@ -108,7 +130,7 @@ def _to_compliance_map(final_map: dict, needs_review: bool, section: str) -> Com
         department=department,
         owner=_role_for(department),
         deadline=_deadline_iso(final_map.get("deadline")),
-        category=_category_for(section),
+        category=_category_for(section, final_map.get("new_obligation", "")),
         confidence=float(final_map["confidence"]),
         needsReview=needs_review,
     )

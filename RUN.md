@@ -1,0 +1,236 @@
+# Running & Debugging Canara ARC Shield
+
+This is the hands-on runbook. It starts every server **in your own terminal** so you
+see its logs live and can Ctrl+C / restart it yourself. For architecture and the API
+list, see [README.md](./README.md).
+
+> **The golden rule:** one server = one terminal window. Don't background them. The
+> whole point is that each window shows that server's logs so you can debug.
+
+**Startup order (matters):** nodes → **blockchain** → backend → frontend. The backend
+connects to the live chain and to the nodes when it boots, so those must be up first.
+
+---
+
+## 0. One-time setup (skip if already done)
+
+```powershell
+# from repo root: C:\hack\Canara-ARC-Shield-
+cd backend ; npm install ; cd ..
+cd frontend ; npm install ; cd ..
+pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx
+```
+
+For the blockchain you also need **Docker Desktop** running and **WSL2 Ubuntu** installed.
+
+---
+
+## 1. Start the 3 AI nodes — 3 terminals
+
+Each node prints its requests and errors to its own window. Open **three** PowerShell
+terminals. In **each**, first set the Python path, then start one node:
+
+**Terminal 1 — Node 1 (Intelligence + LLM):**
+```powershell
+cd C:\hack\Canara-ARC-Shield-
+$env:PYTHONPATH = "C:\hack\Canara-ARC-Shield-"
+python -m uvicorn node1_intelligence.api:app --port 8001 --host 127.0.0.1
+```
+
+**Terminal 2 — Node 2 (MAP Engine):**
+```powershell
+cd C:\hack\Canara-ARC-Shield-
+$env:PYTHONPATH = "C:\hack\Canara-ARC-Shield-"
+python -m uvicorn node2_map_engine.api:app --port 8002 --host 127.0.0.1
+```
+
+**Terminal 3 — Node 3 (Verification):**
+```powershell
+cd C:\hack\Canara-ARC-Shield-
+$env:PYTHONPATH = "C:\hack\Canara-ARC-Shield-"
+python -m uvicorn node3_verification_engine.api:app --port 8003 --host 127.0.0.1
+```
+
+Each should end with `Uvicorn running on http://127.0.0.1:800X`. Leave them running.
+When a circular is processed you'll see lines like `POST /analyze HTTP/1.1 200 OK` in
+the Node 1 window — **that is your pipeline log.**
+
+---
+
+## 2. Start the blockchain — REQUIRED, before the backend
+
+The audit ledger is **not optional** — this is an audit/compliance platform and every
+pipeline stage is sealed on the real Hyperledger Fabric chain. Start it before the
+backend so the backend connects to a live chain on boot.
+
+**Prerequisites:** Docker Desktop running, WSL2 Ubuntu installed.
+
+From a **WSL2 Ubuntu** shell (NOT PowerShell), one command brings up the whole chain:
+
+```bash
+bash /mnt/c/hack/Canara-ARC-Shield-/fabric/scripts/start-blockchain.sh
+```
+
+This script is idempotent — run it on a fresh machine, after a reboot, or when the
+network is already up; it detects the state and does only what's needed. It:
+1. brings up the 2-org network + `auditchannel` (if not already running),
+2. builds the chaincode image once / reuses it after (CCAAS — the peer never builds Go
+   in-container, which is what OOMs on 16GB machines),
+3. commits the chaincode definition (if not already committed),
+4. starts the chaincode containers,
+5. smoke-tests it and prints `VerifyChain -> {"valid":true,"brokenAt":-1}`.
+
+When you see that `{"valid":true...}` line, **the chain is live.** `backend/.env` already
+has `FABRIC_ENABLED=true`, so the backend uses it automatically.
+
+To stop the chain later: `bash /mnt/c/hack/Canara-ARC-Shield-/fabric/scripts/down.sh`.
+
+> **First-ever run only:** if `fabric-samples/` was never downloaded, run
+> `bash /mnt/c/hack/Canara-ARC-Shield-/fabric/scripts/up.sh` once first (it fetches
+> fabric-samples + binaries + Docker images, ~1.5GB), then use `start-blockchain.sh`
+> from then on.
+
+> **Emergency fallback (only if Docker is broken):** the backend can run on a local
+> hash-chain ledger by setting `FABRIC_ENABLED=false` in `backend/.env`. Development-only
+> degraded mode — the real deployment uses Fabric.
+
+---
+
+## 3. Start the backend — 1 terminal
+
+**Terminal 4 — Backend orchestrator:**
+```powershell
+cd C:\hack\Canara-ARC-Shield-\backend
+npm run dev
+```
+
+Healthy startup looks like:
+```
+[ledger] using Hyperledger Fabric backend
+[arc-shield] listening on :4000 (development) agents=live/live/live
+```
+
+- `[ledger] using Hyperledger Fabric backend` confirms it connected to the chain from
+  step 2. If it says `hash-chain`, then `FABRIC_ENABLED` is false or the chain isn't up.
+- `agents=live/live/live` means it can see all 3 nodes. If you see `stub`, the node URLs
+  in `backend/.env` are blank or a node is down.
+
+**This window is your most important log** — pipeline failures print here, e.g.:
+```
+[queue:pipeline] job CIR-xxxx failed: Agent http://localhost:8001/analyze timed out
+```
+
+---
+
+## 4. Start the frontend — 1 terminal
+
+**Terminal 5 — Frontend:**
+```powershell
+cd C:\hack\Canara-ARC-Shield-\frontend
+npm run dev
+```
+
+Open the URL it prints (**http://localhost:5173**).
+
+---
+
+## 5. Quick health check (any terminal)
+
+```powershell
+4000,8001,8002,8003 | ForEach-Object {
+  $u = if ($_ -eq 4000) { "http://localhost:4000/api/health" } else { "http://localhost:$_/health" }
+  try { Invoke-RestMethod $u -TimeoutSec 4 | Out-Null; "  $_ OK" } catch { "  $_ DOWN" }
+}
+```
+
+Confirm the chain is live (from WSL2 Ubuntu):
+```bash
+bash /mnt/c/hack/Canara-ARC-Shield-/fabric/scripts/start-blockchain.sh   # re-run = health check
+```
+
+---
+
+## 6. Test the pipeline from the terminal (bypasses the UI)
+
+This proves the backend + nodes + chain work even if the screen looks stuck. A sample
+circular `rbi_circular_16.pdf` is in the repo root.
+
+```powershell
+$base = "http://localhost:4000/api"; $h = @{ "x-role" = "compliance" }
+
+# upload
+$up = Invoke-RestMethod "$base/circulars" -Method Post -Headers $h -Form @{ file = Get-Item "C:\hack\Canara-ARC-Shield-\rbi_circular_16.pdf" }
+$id = $up.data.id; "uploaded $id"
+
+# start pipeline
+Invoke-RestMethod "$base/circulars/$id/process" -Method Post -Headers $h | Out-Null
+
+# poll status until COMPLETE (~40s with deepseek on GPU)
+do {
+  Start-Sleep 3
+  $pl = Invoke-RestMethod "$base/circulars/$id/pipeline" -Headers $h
+  "stage=$($pl.data.stage)  maps=$($pl.data.maps.Count)  verifs=$($pl.data.verifications.Count)"
+} while ($pl.data.stage -notin "COMPLETE","FAILED")
+
+# confirm it was sealed on-chain
+(Invoke-RestMethod "$base/ledger/verify" -Headers $h).data         # -> valid=True
+(Invoke-RestMethod "$base/ledger/custody/$id" -Headers $h).data.events.kind   # 5 custody events
+```
+
+If this reaches `COMPLETE` but the **UI** doesn't update, the problem is the frontend
+refresh (see the known issue below), not the backend.
+
+---
+
+## Known issue — UI doesn't update after upload
+
+**Symptom:** you upload in *Circular Explorer*, see "Starting pipeline…", then nothing
+changes.
+
+**Why:** the backend pipeline runs asynchronously and takes ~40s. The frontend loads
+the circular's status **once** right after upload (when it's still `RECEIVED`) and does
+**not** poll for updates. So the screen stays on the early stage until you manually
+re-click the circular.
+
+**Workaround right now:** click another circular and click back, or refresh the page
+after ~45s — you'll see it at `COMPLETE` with MAPs and verifications.
+
+**Proper fix (not yet applied):** add polling to the detail view so it refetches
+`/circulars/:id/pipeline` every few seconds until the stage is `COMPLETE` or `FAILED`.
+Tell me if you want this and I'll wire it in.
+
+---
+
+## Troubleshooting
+
+| What you see | Cause | Fix |
+|---|---|---|
+| Backend log: `agents=stub/stub/stub` | Node URLs blank in `backend/.env` | Set `NODE1_URL=http://localhost:8001` (and 8002/8003), restart backend |
+| Backend log: `Agent .../analyze timed out` | LLM cold-load slower than `AGENT_TIMEOUT_MS` | Raise `AGENT_TIMEOUT_MS` in `backend/.env` (currently 180000), restart backend |
+| Pipeline stuck at `CLASSIFYING`, slow | Ollama model spilling to CPU | Check `ollama ps` — want `100% GPU`. `deepseek-r1:8b` fits 8GB; `qwen3.5:9b` spills |
+| `UNPROCESSABLE: Unable to parse PDF` | PDF has no extractable text layer | Use a real text PDF (e.g. the included `rbi_circular_16.pdf`) |
+| Node won't start: `ModuleNotFoundError` | `PYTHONPATH` not set in that terminal | Re-run the `$env:PYTHONPATH = ...` line before uvicorn |
+| Backend log: `hash-chain` not `Fabric` | Chain not up, or `FABRIC_ENABLED=false` | Run step 2 (`start-blockchain.sh`), confirm `FABRIC_ENABLED=true`, restart backend |
+| Ledger calls fail / backend can't reach chain | Fabric containers down | Re-run `start-blockchain.sh` (it restarts what's missing) |
+| Chaincode deploy fails `unexpected EOF` | Legacy `deployCC` peer-build OOM | Use `start-blockchain.sh` — it deploys via CCAAS and avoids the peer build |
+| Port already in use | An old server is still running | `Get-NetTCPConnection -LocalPort 4000 -State Listen` then `Stop-Process -Id <pid> -Force` |
+
+### Stop a server on a port
+```powershell
+$p = 4000   # or 5173, 8001, 8002, 8003
+(Get-NetTCPConnection -LocalPort $p -State Listen).OwningProcess |
+  Select-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+---
+
+## Service map
+
+| Service | Terminal | Port | Start command |
+|---|---|---|---|
+| Node 1 Intelligence | 1 | 8001 | `python -m uvicorn node1_intelligence.api:app --port 8001` |
+| Node 2 MAP Engine | 2 | 8002 | `python -m uvicorn node2_map_engine.api:app --port 8002` |
+| Node 3 Verification | 3 | 8003 | `python -m uvicorn node3_verification_engine.api:app --port 8003` |
+| Blockchain (Fabric) | WSL2 Ubuntu | 7051 | `bash fabric/scripts/start-blockchain.sh` |
+| Backend | 4 | 4000 | `npm run dev` (in `backend/`) |
+| Frontend | 5 | 5173 | `npm run dev` (in `frontend/`) |

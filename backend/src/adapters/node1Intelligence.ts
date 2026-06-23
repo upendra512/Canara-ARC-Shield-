@@ -14,7 +14,7 @@ export interface IntelligenceRequest {
   circularId: string;
   filename: string;
   text: string;
-  context?: { linkedCirculars: LinkedCircular[] };
+  context?: { linkedCirculars: LinkedCircular[]; corpus?: LinkedCircular[] };
 }
 
 /**

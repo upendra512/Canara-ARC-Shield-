@@ -101,6 +101,63 @@
       "source": "RBI Advisory"
     }
   },
-  "compliance_maps": [],
+  "compliance_maps": [
+    {
+      "map_id": "83ade113-5cfd-4775-8a61-354049dcc492",
+      "clause_ref": "NEW",
+      "change_type": "ADDED",
+      "change_reason": "New regulatory obligation introduced",
+      "impact": "HIGH",
+      "summary": "New high impact regulatory clause added",
+      "old_obligation": null,
+      "new_obligation": "In partial modification of the A.P. (DIR Series) Circular No. 13 dated June 8, 2026 on \u2018NOP- INR position of Authorised Dealer Category-I banks\u2019, it has been decided that AD Cat-I banks shall exclude the positions arising out of hedged transactions related to FCNR (B) deposits, External Commercial Borrowings and Overseas Foreign Currency Borrowings raised in terms of the aforesaid circulars, while ensuring compliance with the provisions of the A.P. (DIR Series) Circular No. 24 dated March 27, 2026 and for computation of net overnight open position in terms of the aforesaid Master Direction.",
+      "affected_department": "General Legal",
+      "deadline": "2026-06-23T17:01:06.826561",
+      "source_circular": "CIR-e609441f5777",
+      "confidence": 0.92
+    },
+    {
+      "map_id": "f7a669ad-89c1-4d35-bd66-d112dc193960",
+      "clause_ref": "NEW",
+      "change_type": "ADDED",
+      "change_reason": "New regulatory obligation introduced",
+      "impact": "MEDIUM",
+      "summary": "New medium impact regulatory clause added",
+      "old_obligation": null,
+      "new_obligation": "The directions contained in this circular have been issued under Sections 10(4), 11(1) and 11(2) of the FEMA, 1999 (42 of 1999) and are without prejudice to permissions / approvals, if any, required under any other law. Yours faithfully, (Dimple Bhandia) Chief General Manager",
+      "affected_department": "General Legal",
+      "deadline": "2026-06-23T17:01:06.830232",
+      "source_circular": "CIR-e609441f5777",
+      "confidence": 0.92
+    },
+    {
+      "map_id": "47878904-3384-4400-8ac8-0dba6d855414",
+      "clause_ref": "NEW",
+      "change_type": "ADDED",
+      "change_reason": "New regulatory obligation introduced",
+      "impact": "HIGH",
+      "summary": "New high impact regulatory clause added",
+      "old_obligation": null,
+      "new_obligation": "In partial modification of the A.P. (DIR Series) Circular No. 13 dated June 8, 2026 on \u2018NOP- INR position of Authorised Dealer Category-I banks\u2019, it has been decided that AD Cat-I banks shall exclude the positions arising out of hedged transactions related to FCNR (B) deposits, External Commercial Borrowings and Overseas Foreign Currency Borrowings raised in terms of the aforesaid circulars, while ensuring compliance with the provisions of the A.P. (DIR Series) Circular No. 24 dated March 27, 2026 and for computation of net overnight open position in terms of the aforesaid Master Direction.",
+      "affected_department": "General Legal",
+      "deadline": "2026-06-23T17:04:54.689305",
+      "source_circular": "CIR-1e593db3c5ad",
+      "confidence": 0.92
+    },
+    {
+      "map_id": "4187a818-5f8c-4b37-b125-8836c2d78aa8",
+      "clause_ref": "NEW",
+      "change_type": "ADDED",
+      "change_reason": "New regulatory obligation introduced",
+      "impact": "MEDIUM",
+      "summary": "New medium impact regulatory clause added",
+      "old_obligation": null,
+      "new_obligation": "The directions contained in this circular have been issued under Sections 10(4), 11(1) and 11(2) of the FEMA, 1999 (42 of 1999) and are without prejudice to permissions / approvals, if any, required under any other law. Yours faithfully, (Dimple Bhandia) Chief General Manager",
+      "affected_department": "General Legal",
+      "deadline": "2026-06-23T17:04:54.691502",
+      "source_circular": "CIR-1e593db3c5ad",
+      "confidence": 0.92
+    }
+  ],
   "human_review_queue": []
 }

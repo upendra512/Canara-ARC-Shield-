@@ -97,4 +97,20 @@ export const dashboardService = {
       .filter((v) => mapIds.has(v.mapId));
     return { role, maps, verifications };
   },
+
+  /** Low-confidence MAPs flagged for human review, enriched with circular context. */
+  async reviewQueue() {
+    const circulars = await stateStore.listCirculars();
+    const titleById = new Map(circulars.map((c) => [c.id, c.title]));
+    const pipelines = await stateStore.listPipelines();
+    const items = pipelines
+      .flatMap((p) => p.maps)
+      .filter((m) => m.needsReview)
+      .map((m) => ({
+        ...m,
+        circularTitle: titleById.get(m.circularId) ?? m.circularId,
+      }))
+      .sort((a, b) => a.confidence - b.confidence);
+    return { count: items.length, items };
+  },
 };

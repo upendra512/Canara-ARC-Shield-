@@ -1,0 +1,439 @@
+{
+  "regulators": {
+    "RBI": ["reserve bank of india", "rbi", "dbod", "dbr", "dpss", "rbi/", "master direction", "master circular"],
+    "SEBI": ["securities and exchange board", "sebi", "listing obligations", "lodr", "depositories"],
+    "IRDAI": ["insurance regulatory", "irdai", "irda", "insurer", "policyholder"],
+    "MCA": ["ministry of corporate affairs", "mca", "companies act", "registrar of companies", "roc"]
+  },
+  "obligation_terms": [
+    "shall", "must", "mandatory", "required", "require", "requires", "shall not", "must not", "may not",
+    "prohibited", "forbidden", "obligated", "is required to", "are required to",
+    "should", "shall ensure", "shall maintain", "shall be retained", "shall be reported"
+  ],
+  "domains": {
+    "kyc": {
+      "label": "Know Your Customer",
+      "regSection": "KYC",
+      "department": "Compliance",
+      "keywords": ["kyc", "know your customer", "customer identification", "due diligence", "cdd", "onboarding", "account opening", "pan", "aadhaar", "proof of address", "customer profile", "re-kyc"],
+      "rule_types": {
+        "IDENTITY_VERIFICATION": {
+          "keywords": ["identity", "verify", "verification", "pan verification", "aadhaar verification", "authenticate"],
+          "examples": ["Customer identity must be verified before account opening", "PAN verification is mandatory"]
+        },
+        "DOCUMENT_COLLECTION": {
+          "keywords": ["document", "proof of address", "pan copy", "passport", "collect", "obtain", "officially valid document", "ovd"],
+          "examples": ["Proof of address must be collected", "PAN copy shall be obtained"]
+        },
+        "CDD_REQUIREMENT": {
+          "keywords": ["customer due diligence", "cdd", "customer profile", "assess", "onboarding"],
+          "examples": ["CDD shall be performed before onboarding", "Customer profile shall be assessed"]
+        },
+        "RISK_CLASSIFICATION": {
+          "keywords": ["classified", "low risk", "medium risk", "high risk", "risk category", "risk rating"],
+          "examples": ["Customers shall be classified as Low, Medium or High risk"]
+        },
+        "EDD_REQUIREMENT": {
+          "keywords": ["enhanced due diligence", "edd", "pep", "politically exposed", "high-risk customer", "additional checks"],
+          "examples": ["High-risk customers require EDD", "PEPs require additional checks"]
+        },
+        "PERIODIC_REVIEW": {
+          "keywords": ["periodic", "updated every", "re-kyc", "review every", "refreshed", "two years", "annually"],
+          "examples": ["KYC shall be updated every 2 years"]
+        },
+        "TRANSACTION_MONITORING": {
+          "keywords": ["monitor", "monitored", "transaction monitoring", "ongoing monitoring"],
+          "examples": ["Customer transactions shall be monitored"]
+        },
+        "RECORD_RETENTION": {
+          "keywords": ["retain", "retained", "retention", "preserve", "records for", "years"],
+          "examples": ["KYC records shall be retained for 10 years"]
+        },
+        "ESCALATION": {
+          "keywords": ["escalate", "escalated", "report to compliance", "suspicious customer"],
+          "examples": ["Suspicious customers shall be reported to compliance team"]
+        },
+        "REPORTING_OBLIGATION": {
+          "keywords": ["str", "ctr", "fiu", "filed", "reported to", "report shall be filed"],
+          "examples": ["STR shall be filed with FIU"]
+        }
+      }
+    },
+    "aml": {
+      "label": "Anti-Money Laundering",
+      "regSection": "AML",
+      "department": "Compliance",
+      "keywords": ["aml", "anti-money laundering", "money laundering", "terrorist financing", "suspicious transaction", "sanctions", "watchlist", "fiu", "pmla"],
+      "rule_types": {
+        "TRANSACTION_MONITORING": {
+          "keywords": ["transaction", "threshold", "reviewed", "monitor", "exceeding", "alert"],
+          "examples": ["Transactions exceeding threshold shall be reviewed"]
+        },
+        "STR_REPORTING": {
+          "keywords": ["suspicious transaction report", "str", "fiu-ind", "filed within"],
+          "examples": ["STR shall be filed with FIU within 7 days"]
+        },
+        "CTR_REPORTING": {
+          "keywords": ["cash transaction report", "ctr", "cash transactions", "aggregate"],
+          "examples": ["Cash transactions above 10 lakh shall be reported via CTR"]
+        },
+        "SANCTIONS_SCREENING": {
+          "keywords": ["sanctions", "ofac", "un sanctions", "designated", "screen against"],
+          "examples": ["Customers shall be screened against sanctions lists"]
+        },
+        "WATCHLIST_SCREENING": {
+          "keywords": ["watchlist", "negative list", "blacklist", "screening"],
+          "examples": ["Parties shall be screened against the watchlist"]
+        },
+        "EDD_REQUIREMENT": {
+          "keywords": ["enhanced due diligence", "edd", "high-risk", "additional scrutiny"],
+          "examples": ["High-risk relationships require EDD"]
+        },
+        "ALERT_INVESTIGATION": {
+          "keywords": ["alert", "investigate", "investigation", "disposition", "case"],
+          "examples": ["Alerts shall be investigated within defined timelines"]
+        },
+        "SUSPICIOUS_ACTIVITY_DETECTION": {
+          "keywords": ["suspicious activity", "red flag", "unusual", "detect", "pattern"],
+          "examples": ["Suspicious activity shall be detected and flagged"]
+        }
+      }
+    },
+    "information_security": {
+      "label": "Information Security",
+      "regSection": "Cyber",
+      "department": "Information Security",
+      "keywords": ["information security", "infosec", "cyber", "cybersecurity", "password", "authentication", "mfa", "access control", "encryption", "session", "privileged", "logging", "patch"],
+      "rule_types": {
+        "PASSWORD_REQUIREMENT": {
+          "keywords": ["password", "passphrase", "changed every", "complexity", "rotated"],
+          "examples": ["Passwords must be changed every 90 days"]
+        },
+        "ACCESS_CONTROL": {
+          "keywords": ["access control", "least privilege", "role-based", "rbac", "authorization", "access rights"],
+          "examples": ["Access shall be granted on a least-privilege basis"]
+        },
+        "MFA_REQUIREMENT": {
+          "keywords": ["multi-factor", "mfa", "two-factor", "2fa", "biometric", "security key"],
+          "examples": ["MFA shall be enabled for all portals"]
+        },
+        "SESSION_MANAGEMENT": {
+          "keywords": ["session", "timeout", "idle", "re-authenticate", "session expiry"],
+          "examples": ["Sessions shall time out after 15 minutes of inactivity"]
+        },
+        "PRIVILEGED_ACCESS": {
+          "keywords": ["privileged", "admin", "administrative", "pam", "root", "superuser"],
+          "examples": ["Privileged access shall require additional approval"]
+        },
+        "LOGGING": {
+          "keywords": ["log", "logging", "audit trail", "siem", "event log", "retained logs"],
+          "examples": ["All access events shall be logged and retained"]
+        },
+        "PATCH_MANAGEMENT": {
+          "keywords": ["patch", "vulnerability", "update", "remediate", "cve", "patched within"],
+          "examples": ["Critical patches shall be applied within 15 days"]
+        },
+        "ENCRYPTION": {
+          "keywords": ["encrypt", "encryption", "aes", "tls", "at rest", "in transit", "cryptography"],
+          "examples": ["Customer data must be encrypted at rest using AES-256"]
+        }
+      }
+    },
+    "data_privacy": {
+      "label": "Data Privacy",
+      "regSection": "Risk",
+      "department": "Data Privacy Office",
+      "keywords": ["data privacy", "personal data", "consent", "data subject", "pii", "data minimisation", "data sharing", "data retention", "right to erasure", "dpdp"],
+      "rule_types": {
+        "CONSENT_REQUIREMENT": {
+          "keywords": ["consent", "opt-in", "obtain consent", "explicit consent"],
+          "examples": ["Customer consent must be obtained before data sharing"]
+        },
+        "DATA_MINIMIZATION": {
+          "keywords": ["minimisation", "minimization", "only necessary", "limited to", "purpose limitation"],
+          "examples": ["Only data necessary for the purpose shall be collected"]
+        },
+        "DATA_SHARING": {
+          "keywords": ["share", "sharing", "third party", "disclose", "transfer"],
+          "examples": ["Personal data shall not be shared without consent"]
+        },
+        "DATA_ACCESS": {
+          "keywords": ["access request", "data subject access", "right to access", "provide a copy"],
+          "examples": ["Data subjects may request access to their personal data"]
+        },
+        "DATA_RETENTION": {
+          "keywords": ["retention", "retain", "stored for", "kept for", "retention period"],
+          "examples": ["Personal data shall be retained only as long as necessary"]
+        },
+        "DATA_DELETION": {
+          "keywords": ["delete", "erasure", "right to be forgotten", "purge", "destroy"],
+          "examples": ["Personal data shall be deleted upon request"]
+        }
+      }
+    },
+    "vendor_risk": {
+      "label": "Vendor / Third-Party Risk",
+      "regSection": "Risk",
+      "department": "Risk Management",
+      "keywords": ["vendor", "third party", "third-party", "outsourcing", "service provider", "supplier", "contract"],
+      "rule_types": {
+        "VENDOR_ASSESSMENT": {
+          "keywords": ["assess", "assessment", "due diligence", "onboard vendor", "evaluate vendor"],
+          "examples": ["Vendors shall undergo risk assessment before onboarding"]
+        },
+        "SECURITY_REVIEW": {
+          "keywords": ["security review", "security assessment", "penetration", "vendor security"],
+          "examples": ["Vendor security posture shall be reviewed annually"]
+        },
+        "CONTRACT_REQUIREMENT": {
+          "keywords": ["contract", "agreement", "clause", "sla", "right to audit"],
+          "examples": ["Contracts shall include a right-to-audit clause"]
+        },
+        "PERIODIC_AUDIT": {
+          "keywords": ["audit", "periodic audit", "review periodically", "reassess"],
+          "examples": ["Critical vendors shall be audited periodically"]
+        },
+        "THIRD_PARTY_MONITORING": {
+          "keywords": ["monitor", "ongoing monitoring", "performance", "track vendor"],
+          "examples": ["Third-party performance shall be continuously monitored"]
+        }
+      }
+    },
+    "business_continuity": {
+      "label": "Business Continuity",
+      "regSection": "IT Risk",
+      "department": "Risk Management",
+      "keywords": ["business continuity", "bcp", "disaster recovery", "backup", "rto", "rpo", "incident response", "resilience"],
+      "rule_types": {
+        "BACKUP_REQUIREMENT": {
+          "keywords": ["backup", "backed up", "replica", "snapshot"],
+          "examples": ["Critical data shall be backed up daily"]
+        },
+        "DR_TESTING": {
+          "keywords": ["disaster recovery", "dr test", "drill", "failover test"],
+          "examples": ["DR drills shall be conducted twice a year"]
+        },
+        "RECOVERY_TIME_OBJECTIVE": {
+          "keywords": ["rto", "recovery time", "restored within"],
+          "examples": ["Critical systems shall have an RTO of 4 hours"]
+        },
+        "RECOVERY_POINT_OBJECTIVE": {
+          "keywords": ["rpo", "recovery point", "data loss"],
+          "examples": ["The RPO shall not exceed 15 minutes"]
+        },
+        "INCIDENT_RESPONSE": {
+          "keywords": ["incident response", "respond", "containment", "recovery plan"],
+          "examples": ["An incident response plan shall be maintained and tested"]
+        }
+      }
+    },
+    "fraud": {
+      "label": "Fraud Risk",
+      "regSection": "Risk",
+      "department": "Risk Management",
+      "keywords": ["fraud", "fraudulent", "loss", "fraud monitoring", "case investigation"],
+      "rule_types": {
+        "FRAUD_MONITORING": {
+          "keywords": ["fraud monitoring", "monitor", "detect fraud", "transaction screening"],
+          "examples": ["Transactions shall be monitored for fraud indicators"]
+        },
+        "ALERT_GENERATION": {
+          "keywords": ["alert", "trigger", "flag", "generated"],
+          "examples": ["Alerts shall be generated for anomalous activity"]
+        },
+        "CASE_INVESTIGATION": {
+          "keywords": ["case", "investigate", "investigation", "review case"],
+          "examples": ["Fraud cases shall be investigated within 48 hours"]
+        },
+        "ESCALATION": {
+          "keywords": ["escalate", "escalated", "reported to management"],
+          "examples": ["Confirmed fraud shall be escalated to management"]
+        },
+        "LOSS_REPORTING": {
+          "keywords": ["loss", "fraud loss", "reported", "report loss"],
+          "examples": ["Fraud losses shall be reported to the regulator"]
+        }
+      }
+    },
+    "capital_adequacy": {
+      "label": "Capital Adequacy / Basel",
+      "regSection": "Basel",
+      "department": "Treasury",
+      "keywords": ["capital", "capital adequacy", "crar", "tier 1", "tier 2", "risk-weighted", "basel", "minimum capital", "buffer"],
+      "rule_types": {
+        "MINIMUM_CAPITAL": {
+          "keywords": ["minimum capital", "maintain capital", "capital floor", "capital of"],
+          "examples": ["Banks must maintain a minimum capital of 5,000,000 INR"]
+        },
+        "CAPITAL_RATIO": {
+          "keywords": ["crar", "capital adequacy ratio", "tier 1", "ratio of"],
+          "examples": ["The capital adequacy ratio shall not fall below 11.5%"]
+        },
+        "RISK_WEIGHT": {
+          "keywords": ["risk weight", "risk-weighted assets", "rwa", "weighting"],
+          "examples": ["Risk weights for unsecured exposures shall be increased"]
+        },
+        "CAPITAL_BUFFER": {
+          "keywords": ["buffer", "ccb", "conservation buffer", "countercyclical"],
+          "examples": ["A capital conservation buffer shall be maintained"]
+        }
+      }
+    },
+    "treasury_liquidity": {
+      "label": "Treasury & Liquidity",
+      "regSection": "Treasury",
+      "department": "Treasury",
+      "keywords": ["liquidity", "lcr", "nsfr", "treasury", "net cash outflow", "hqla", "liquidity coverage"],
+      "rule_types": {
+        "LIQUIDITY_COVERAGE": {
+          "keywords": ["lcr", "liquidity coverage ratio", "net cash outflow", "stress period"],
+          "examples": ["Banks must maintain an LCR of 100% of net cash outflows"]
+        },
+        "FUNDING_RATIO": {
+          "keywords": ["nsfr", "net stable funding", "stable funding"],
+          "examples": ["The NSFR shall be maintained above 100%"]
+        },
+        "EXPOSURE_LIMIT": {
+          "keywords": ["exposure", "limit", "single borrower", "concentration", "shall not exceed"],
+          "examples": ["Export credit exposure shall not exceed 5% of advances"]
+        }
+      }
+    },
+    "credit_risk": {
+      "label": "Credit Risk",
+      "regSection": "Risk",
+      "department": "Risk Management",
+      "keywords": ["credit risk", "npa", "provisioning", "loan", "advances", "stress test", "credit portfolio"],
+      "rule_types": {
+        "PROVISIONING": {
+          "keywords": ["provision", "provisioning", "npa", "non-performing", "expected loss"],
+          "examples": ["Provisioning for NPAs shall be increased"]
+        },
+        "STRESS_TESTING": {
+          "keywords": ["stress test", "stress testing", "adverse scenario", "quarterly stress"],
+          "examples": ["Banks must conduct quarterly stress tests on the credit portfolio"]
+        },
+        "EXPOSURE_LIMIT": {
+          "keywords": ["exposure", "limit", "single borrower", "group exposure", "shall not exceed"],
+          "examples": ["Single-borrower exposure shall not exceed prescribed limits"]
+        }
+      }
+    },
+    "operational_risk": {
+      "label": "Operational Risk",
+      "regSection": "Risk",
+      "department": "Risk Management",
+      "keywords": ["operational risk", "process failure", "control failure", "loss event", "key risk indicator", "kri"],
+      "rule_types": {
+        "CONTROL_REQUIREMENT": {
+          "keywords": ["control", "internal control", "control framework", "segregation of duties"],
+          "examples": ["Adequate internal controls shall be maintained"]
+        },
+        "LOSS_EVENT_REPORTING": {
+          "keywords": ["loss event", "operational loss", "report incident", "near miss"],
+          "examples": ["Operational loss events shall be recorded and reported"]
+        }
+      }
+    },
+    "it_risk": {
+      "label": "IT & Technology Risk",
+      "regSection": "IT Risk",
+      "department": "Information Security",
+      "keywords": ["it risk", "technology risk", "system", "change management", "capacity", "availability", "data center"],
+      "rule_types": {
+        "CHANGE_MANAGEMENT": {
+          "keywords": ["change management", "change request", "approval", "rollback", "deployment"],
+          "examples": ["All production changes shall follow change management"]
+        },
+        "AVAILABILITY": {
+          "keywords": ["availability", "uptime", "sla", "downtime"],
+          "examples": ["Core systems shall maintain 99.9% availability"]
+        },
+        "CAPACITY_MANAGEMENT": {
+          "keywords": ["capacity", "scalability", "load", "headroom"],
+          "examples": ["System capacity shall be reviewed periodically"]
+        }
+      }
+    },
+    "incident_reporting": {
+      "label": "Incident Reporting",
+      "regSection": "Cyber",
+      "department": "Information Security",
+      "keywords": ["incident", "cyber incident", "breach", "report to the regulator", "within hours", "data breach"],
+      "rule_types": {
+        "INCIDENT_NOTIFICATION": {
+          "keywords": ["report", "notify", "within", "hours", "regulator", "discovery"],
+          "examples": ["All cyber incidents must be reported to the regulator within 6 hours"]
+        },
+        "BREACH_DISCLOSURE": {
+          "keywords": ["breach", "data breach", "disclose", "affected customers"],
+          "examples": ["Data breaches shall be disclosed to affected customers"]
+        }
+      }
+    },
+    "governance": {
+      "label": "Governance & Board Oversight",
+      "regSection": "Risk",
+      "department": "Compliance",
+      "keywords": ["board", "governance", "oversight", "committee", "policy review", "risk committee"],
+      "rule_types": {
+        "BOARD_OVERSIGHT": {
+          "keywords": ["board", "review", "oversight", "approve", "committee"],
+          "examples": ["The Board shall review risk policies at least quarterly"]
+        },
+        "POLICY_REVIEW": {
+          "keywords": ["policy", "review", "updated", "approved annually"],
+          "examples": ["Policies shall be reviewed and approved annually"]
+        }
+      }
+    },
+    "outsourcing": {
+      "label": "Outsourcing",
+      "regSection": "Risk",
+      "department": "Risk Management",
+      "keywords": ["outsourcing", "outsourced", "service provider", "material outsourcing", "cloud"],
+      "rule_types": {
+        "OUTSOURCING_APPROVAL": {
+          "keywords": ["approval", "board approval", "material outsourcing", "prior approval"],
+          "examples": ["Material outsourcing arrangements shall require board approval"]
+        },
+        "EXIT_STRATEGY": {
+          "keywords": ["exit", "exit plan", "termination", "transition"],
+          "examples": ["A documented exit strategy shall exist for each provider"]
+        }
+      }
+    },
+    "consumer_protection": {
+      "label": "Consumer Protection",
+      "regSection": "Other",
+      "department": "Compliance",
+      "keywords": ["customer protection", "grievance", "complaint", "fair practice", "disclosure", "consumer"],
+      "rule_types": {
+        "GRIEVANCE_REDRESSAL": {
+          "keywords": ["grievance", "complaint", "redressal", "resolved within", "ombudsman"],
+          "examples": ["Customer complaints shall be resolved within 30 days"]
+        },
+        "DISCLOSURE_REQUIREMENT": {
+          "keywords": ["disclose", "disclosure", "inform the customer", "transparency"],
+          "examples": ["All charges shall be disclosed to the customer upfront"]
+        }
+      }
+    },
+    "reporting": {
+      "label": "Regulatory Reporting",
+      "regSection": "Other",
+      "department": "Compliance",
+      "keywords": ["return", "submit", "regulatory report", "filing", "disclosure to the regulator", "periodic return"],
+      "rule_types": {
+        "PERIODIC_RETURN": {
+          "keywords": ["return", "submit", "periodic", "monthly", "quarterly", "filed by"],
+          "examples": ["The prescribed return shall be submitted monthly"]
+        },
+        "DISCLOSURE_OBLIGATION": {
+          "keywords": ["disclose", "disclosure", "report to the regulator", "notify the regulator"],
+          "examples": ["Material changes shall be disclosed to the regulator"]
+        }
+      }
+    }
+  }
+}

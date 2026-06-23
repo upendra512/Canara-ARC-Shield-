@@ -2,3 +2,10 @@ venv/
 __pycache__/
 *.pyc
 .env
+
+# Vector DB (regenerated at runtime from the source data)
+.chroma/
+
+# Node / build artifacts
+node_modules/
+dist/

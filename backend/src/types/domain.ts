@@ -95,6 +95,7 @@ export interface VerificationResult {
   mapId: string;
   status: VerificationStatus;
   score: number;
+  verifiedBy: MapCategory;
   evidence: { kind: string; ref: string; timestamp: string }[];
 }
 
