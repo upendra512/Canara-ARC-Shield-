@@ -127,6 +127,7 @@ def extract_clauses(text: str) -> List[Dict]:
                 "obligationBearing": True,
                 "_domain": verdict["domain"],
                 "_ruleType": verdict["ruleType"],
+                "_source": verdict.get("source", "keyword"),
                 "_confidence": verdict["confidence"],
             }
         )

@@ -14,6 +14,8 @@ set NODE1_LLM_MODEL=gemma3:12b. No API key needed.
 import json
 import logging
 import re
+import urllib.error
+import urllib.request
 from typing import Dict, List, Optional
 
 import httpx
@@ -193,6 +195,82 @@ async def answer(query: str, citations: List[Dict]) -> str:
     if isinstance(result, dict) and isinstance(result.get("answer"), str):
         return result["answer"].strip() or fallback
     return fallback
+
+
+def _classify_sync(prompt: str) -> Optional[Dict]:
+    """Synchronous one-shot chat for the classification ladder's Tier 3.
+
+    The classify() path is synchronous (called per-clause inside extraction), so
+    this uses urllib rather than the async httpx _chat above. Any failure returns
+    None so the ladder keeps the Tier 1/Tier 2 verdict.
+    """
+    url = config.llm_url()
+    if not url:
+        return None
+    headers = {"Content-Type": "application/json"}
+    key = config.llm_key()
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    user_content = f"/no_think {prompt}" if config.llm_no_think() else prompt
+    body = json.dumps({
+        "model": config.llm_model(),
+        "messages": [
+            {"role": "system", "content": _SYSTEM},
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    }).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=config.llm_timeout()) as resp:
+            payload = json.loads(resp.read())
+        content = payload["choices"][0]["message"]["content"]
+        return _parse_json(content)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+        logger.warning("LLM classify unavailable (%s); ladder keeps rule/semantic verdict.", exc)
+        return None
+
+
+def classify_rule(text: str, candidates: List[Dict]) -> Optional[Dict]:
+    """Tier 3 of the classification ladder: constrained LLM rule-type pick.
+
+    `candidates` is the taxonomy's allowed (domain, ruleType) pairs. The model must
+    choose one of them (or NONE) — it never invents a label, so the output stays
+    inside the taxonomy and the audit trail holds. Returns {domain, ruleType,
+    confidence} or None (disabled / unreachable / no confident pick).
+    """
+    if not enabled() or not text.strip() or not candidates:
+        return None
+    options = [{"domain": c["domain"], "ruleType": c["ruleType"]} for c in candidates]
+    prompt = (
+        "Classify the banking regulatory clause below into exactly ONE of the allowed "
+        "rule types. Choose only from the provided list; if none fit, return NONE.\n\n"
+        f'Clause: "{text[:500]}"\n'
+        f"Allowed rule types: {json.dumps(options)}\n\n"
+        'Respond as JSON: {"domain": "<key>", "ruleType": "<TYPE>", "confidence": 0.0-1.0} '
+        'or {"ruleType": "NONE"}.'
+    )
+    result = _classify_sync(prompt)
+    if not isinstance(result, dict):
+        return None
+    rule_type = result.get("ruleType")
+    if not rule_type or rule_type == "NONE":
+        return None
+    allowed = {c["ruleType"] for c in candidates}
+    if rule_type not in allowed:
+        return None
+    domain = result.get("domain")
+    valid_domain = next((c["domain"] for c in candidates if c["ruleType"] == rule_type), None)
+    try:
+        conf = float(result.get("confidence", 0.7))
+    except (TypeError, ValueError):
+        conf = 0.7
+    return {
+        "domain": domain if domain in {c["domain"] for c in candidates} else valid_domain,
+        "ruleType": rule_type,
+        "confidence": round(min(0.95, max(0.5, conf)), 2),
+    }
 
 
 async def warmup() -> None:
