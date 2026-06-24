@@ -18,8 +18,22 @@ connects to the live chain and to the nodes when it boots, so those must be up f
 # from repo root: C:\hack\Canara-ARC-Shield-
 cd backend ; npm install ; cd ..
 cd frontend ; npm install ; cd ..
-pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx
+pip install fastapi "uvicorn[standard]" pydantic pydantic-settings httpx chromadb
 ```
+
+`chromadb` is required: Node 1's semantic tier (see below) stores taxonomy
+examples in a local vector DB, and the node will not start without it.
+
+**Ollama models** (for Node 1's semantic + LLM tiers). Install [Ollama](https://ollama.com),
+then pull both models once:
+
+```powershell
+ollama pull nomic-embed-text   # embeddings for the semantic tier (~274MB)
+ollama pull deepseek-r1:8b     # LLM tier, reasoning model (~5.2GB, fits 8GB VRAM)
+```
+
+Node 1 still runs without Ollama — it degrades to keyword-only classification —
+but the semantic and LLM tiers need these models present and `ollama` serving.
 
 For the blockchain you also need **Docker Desktop** running and **WSL2 Ubuntu** installed.
 
