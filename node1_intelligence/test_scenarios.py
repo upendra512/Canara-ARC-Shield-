@@ -36,6 +36,12 @@ SAMPLES = {
         "Customer consent must be obtained before data sharing with any third party. "
         "Personal data shall be deleted upon a valid request from the data subject.\n"
     ),
+    "Paraphrase (no taxonomy keywords)": (
+        "Subject: Account Onboarding Controls\n"
+        "1. Before opening any account, the bank shall confirm the applicant truly is "
+        "who they claim to be.\n"
+        "2. Login screens shall demand a second proof of identity beyond the password.\n"
+    ),
 }
 
 
@@ -51,7 +57,8 @@ def main() -> None:
         print(f"issuedDate: {verdict['issuedDate']}")
         print(f"sections  : {verdict['sections']}")
         for c in verdict["clauses"]:
-            print(f"  [{c['section']:<8}] {c.get('_ruleType') or '-':<22} {c['text'][:60]}")
+            print(f"  [{c['section']:<8}] {c.get('_ruleType') or '-':<22} "
+                  f"({c.get('_source', '-'):<8}) {c['text'][:55]}")
         try:
             assert verdict["regulator"] in {"RBI", "SEBI", "IRDAI", "MCA"}
             assert verdict["clauses"], "expected at least one clause"
