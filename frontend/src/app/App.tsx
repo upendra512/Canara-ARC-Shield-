@@ -97,23 +97,63 @@ const STATUS_LABEL: Record<string, string> = {
 
 /* ─── SIDEBAR ──────────────────────────────────────────────────────────── */
 
-function Sidebar({ active, setActive }: { active: string; setActive: (s: string) => void }) {
+function Sidebar({
+  active,
+  setActive,
+}: {
+  active: string;
+  setActive: (s: string) => void;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
-    <aside className="w-[248px] h-screen flex flex-col border-r border-border bg-white shrink-0 select-none">
-      <div className="h-16 flex items-center px-5 border-b border-border gap-3 shrink-0">
-        <div className="w-9 h-9 rounded flex items-center justify-center shrink-0" style={{ background: CB }}>
-          <ShieldCheck size={17} color="white" />
+    <aside
+      className={`fixed md:static w-[248px] h-screen flex flex-col border-r border-border bg-white shrink-0 select-none z-40 transition-all duration-300 ease-in-out ${
+        isMenuOpen ? "left-0" : "-left-[248px]"
+      } md:left-0`}
+    >
+      <button
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="fixed top-3 left-5 z-50 p-2 rounded-lg flex items-center justify-center shrink-0 md:hidden bg-[#004C97]"
+        aria-label="Toggle Menu"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+
+      <div className="h-16 flex items-center px-5 gap-3 shrink-0">
+        <div className="w-11 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[#004C97] shadow-[0_2px_10px_rgba(13,202,240,0.3)]">
+          <ShieldCheck size={25} color="white" />
         </div>
         <div>
-          <div className="font-extrabold text-[13px] tracking-wider leading-none" style={{ color: CB, fontFamily: "Barlow, sans-serif" }}>
+          <div
+            className="font-extrabold text-[18px] tracking-wider leading-none text-[#004C97]"
+            style={{ fontFamily: "Barlow, sans-serif" }}
+          >
             ARC SHIELD
           </div>
-          <div className="text-[9px] text-muted-foreground mt-0.5 tracking-widest uppercase">Canara Bank</div>
+          <div className="text-[12px] text-muted-foreground mt-0.5 tracking-widest uppercase">
+            Canara Bank
+          </div>
         </div>
       </div>
 
       <div className="px-4 pt-4 pb-1">
-        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Platform</div>
+        <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+          Platform
+        </div>
       </div>
 
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
@@ -122,19 +162,35 @@ function Sidebar({ active, setActive }: { active: string; setActive: (s: string)
           return (
             <button
               key={id}
-              onClick={() => setActive(id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[12.5px] font-medium transition-all duration-100 text-left group ${
-                on ? "text-white shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              onClick={() => {
+                setActive(id);
+                setIsMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-full text-[12.5px] font-medium transition-all duration-100 text-left group ${
+                on
+                  ? "bg-[#004C97] text-white shadow-[0_2px_8px_rgba(13,202,240,0.25)]"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
-              style={on ? { background: CB } : {}}
             >
-              <Icon size={14} className={on ? "opacity-100" : "opacity-60 group-hover:opacity-90"} />
-              <span className="flex-1" style={{ fontFamily: "Inter, sans-serif" }}>{label}</span>
+              <Icon
+                size={16}
+                className={
+                  on
+                    ? "text-white"
+                    : "opacity-60 group-hover:opacity-90"
+                }
+              />
+              <span className="flex-1" style={{ fontFamily: "Inter, sans-serif" }}>
+                {label}
+              </span>
               {badge && (
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded" style={{
-                  background: on ? "rgba(255,255,255,0.2)" : `${CY}30`,
-                  color: on ? "white" : "#7a5200",
-                }}>
+                <span
+                  className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-lg ${
+                    on
+                      ? "bg-white/20 text-white"
+                      : "bg-[#ffc10730] text-[#7a5200]"
+                  }`}
+                >
                   {badge}
                 </span>
               )}
@@ -144,12 +200,17 @@ function Sidebar({ active, setActive }: { active: string; setActive: (s: string)
       </nav>
 
       <div className="p-3 border-t border-border shrink-0">
-        <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-secondary cursor-pointer transition-colors">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: CB }}>
+        <div
+          onClick={() => setIsMenuOpen(false)}
+          className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-full hover:bg-secondary cursor-pointer transition-colors"
+        >
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 bg-[#004C97]">
             <User size={13} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-semibold text-foreground truncate">Compliance Officer</div>
+            <div className="text-[12px] font-semibold text-foreground truncate">
+              Compliance Officer
+            </div>
             <div className="text-[10px] text-muted-foreground">Signed in</div>
           </div>
           <Settings size={12} className="text-muted-foreground shrink-0" />
@@ -161,25 +222,42 @@ function Sidebar({ active, setActive }: { active: string; setActive: (s: string)
 
 /* ─── PAGE HEADER ──────────────────────────────────────────────────────── */
 
-function PageHeader({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
+function PageHeader({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="h-14 border-b border-border flex items-center justify-between px-6 bg-white shrink-0">
-      <div>
-        <h1 className="text-[15px] font-extrabold leading-none" style={{ fontFamily: "Barlow, sans-serif", color: "#0a1628" }}>
-          {title}
-        </h1>
-        {sub && <p className="text-[10.5px] text-muted-foreground mt-0.5">{sub}</p>}
-      </div>
-      <div className="flex items-center gap-2.5">
-        {children}
-        <button className="relative p-1.5 rounded hover:bg-secondary transition-colors">
-          <Bell size={14} className="text-muted-foreground" />
-        </button>
+    <div className="w-full border-b border-border bg-white shrink-0 pl-16 pr-4 md:px-6 py-3 sm:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1
+            className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight truncate"
+            style={{ fontFamily: "Barlow, sans-serif" }}
+          >
+            {title}
+          </h1>
+          {sub && (
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-snug">
+              {sub}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          {children}
+          <button className="relative p-1.5 rounded-lg hover:bg-secondary transition-colors">
+            <Bell size={14} className="text-muted-foreground" />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-
 /* ─── KPI CARD ─────────────────────────────────────────────────────────── */
 
 function KPICard({
@@ -193,7 +271,7 @@ function KPICard({
       <div className="flex items-start justify-between">
         <span className="text-[9.5px] font-bold text-muted-foreground uppercase tracking-widest">{label}</span>
         {Icon && (
-          <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: `${color}14` }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}14` }}>
             <Icon size={13} style={{ color }} />
           </div>
         )}
