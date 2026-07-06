@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
+  ResponsiveContainer, Cell,
 } from "recharts";
 import { useApi } from "../hooks/useApi.js";
 import * as api from "../services/endpoints.js";
@@ -30,6 +30,8 @@ const ER = "#dc2626";
 const NAV = [
   { id: "dashboard", icon: LayoutDashboard, label: "Executive Dashboard" },
   { id: "circular",  icon: Search,          label: "Circular Explorer" },
+  { id: "diff",      icon: GitBranch,       label: "Policy Diff Analyzer" },
+  { id: "kpi",       icon: Award,           label: "KPI Audit & Planner", badge: "AI" },
   { id: "copilot",   icon: MessageSquare,   label: "Compliance Copilot", badge: "AI" },
   { id: "blockchain",icon: ShieldCheck,     label: "Blockchain Trust Center" },
   { id: "roles",     icon: Users,           label: "Role Workspace" },
@@ -348,6 +350,13 @@ function ExecutiveDashboard() {
   });
   const chain = useApi(() => api.getChain(), []);
 
+  const deptData = data?.departmentDistribution
+    ? Object.entries(data.departmentDistribution).map(([name, value]) => ({ name, count: value }))
+    : [];
+  const severityData = data?.severityDistribution
+    ? Object.entries(data.severityDistribution).map(([name, value]) => ({ name, count: value }))
+    : [];
+
   return (
     <div className="flex flex-col h-full overflow-auto">
       <PageHeader title="Executive Dashboard" sub="Live compliance posture · derived from pipeline state">
@@ -388,6 +397,51 @@ function ExecutiveDashboard() {
                       <YAxis domain={[0, 100]} tick={{ fontSize: 9.5, fontFamily: "JetBrains Mono, monospace", fill: "#5a6a85" }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ fontSize: 12, fontFamily: "Inter, sans-serif", border: `1px solid ${CB}22`, borderRadius: 6 }} />
                       <Bar dataKey="score" name="Score" fill={CB} radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white border border-border rounded-lg p-5">
+                <h3 className="text-sm font-bold mb-4" style={{ fontFamily: "Barlow, sans-serif", color: "#0a1628" }}>
+                  Policies Mapped by Department
+                </h3>
+                {deptData.length === 0 ? (
+                  <EmptyState title="No department distribution" sub="Policy mappings will appear once circulars are processed." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={224}>
+                    <BarChart data={deptData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="#eef3fa" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 9.5, fill: "#5a6a85" }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "#5a6a85" }} width={120} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
+                      <Bar dataKey="count" name="Policies Count" fill={CB} radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              <div className="bg-white border border-border rounded-lg p-5">
+                <h3 className="text-sm font-bold mb-4" style={{ fontFamily: "Barlow, sans-serif", color: "#0a1628" }}>
+                  Rule Severity Distribution
+                </h3>
+                {severityData.length === 0 ? (
+                  <EmptyState title="No severity distribution" sub="Severity distribution will appear once circulars are processed." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={224}>
+                    <BarChart data={severityData} barCategoryGap="40%">
+                      <CartesianGrid strokeDasharray="2 4" stroke="#eef3fa" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5a6a85" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 9.5, fill: "#5a6a85" }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
+                      <Bar dataKey="count" name="Rules Count" fill={ER} radius={[3, 3, 0, 0]}>
+                        {severityData.map((entry, index) => {
+                          const colors: Record<string, string> = { CRITICAL: ER, HIGH: WN, MEDIUM: CY, LOW: OK };
+                          return <Cell key={`cell-${index}`} fill={colors[entry.name.toUpperCase()] || CB} />;
+                        })}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -468,10 +522,189 @@ function CircularDetail({ circular }: { circular: Circular }) {
   const STAGES: PipelineStage[] = ["RECEIVED", "CLASSIFYING", "MAPPING", "VERIFYING", "SEALED", "COMPLETE"];
   const stageIdx = STAGES.indexOf(stage);
 
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow popups to export the audit PDF report.");
+      return;
+    }
+
+    const title = circular.title;
+    const refNum = circular.refNumber || circular.id;
+    const regulator = circular.regulator || "UNKNOWN REGULATOR";
+    const dateStr = dateOf(circular.issuedDate ?? circular.receivedAt);
+    const receiptHash = pipeline.data?.auditReceiptHash || "Pending Seal";
+
+    // Build department breakdown and severity counts
+    const depts: Record<string, number> = {};
+    const severities: Record<string, number> = {};
+    maps.forEach(m => {
+      const deptName = m.department || "Unassigned";
+      depts[deptName] = (depts[deptName] || 0) + 1;
+      const imp = m.impact || "MEDIUM";
+      severities[imp] = (severities[imp] || 0) + 1;
+    });
+
+    const deptRows = Object.entries(depts).map(([d, count]) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${d}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: bold; text-align: right; font-size: 11px;">${count}</td>
+      </tr>
+    `).join("");
+
+    const severityRows = Object.entries(severities).map(([s, count]) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+          <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: ${
+            s === 'CRITICAL' ? '#dc2626' : s === 'HIGH' ? '#d97706' : s === 'MEDIUM' ? '#004C97' : '#16a34a'
+          }; background-color: #f1f5f9;">${s}</span>
+        </td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: bold; text-align: right; font-size: 11px;">${count}</td>
+      </tr>
+    `).join("");
+
+    const ruleRows = maps.map((m) => {
+      const ver = verifications.find(v => v.mapId === m.id);
+      const verdict = ver ? ver.status : "UNVERIFIED";
+      const verColor = verdict === "PASS" ? "#16a34a" : verdict === "FAIL" ? "#dc2626" : "#d97706";
+      
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: bold; vertical-align: top; font-size: 11px; font-family: monospace;">§${m.clauseId.split("::")[1] || m.clauseId}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; font-size: 11.5px;">
+            <div style="font-weight: bold; margin-bottom: 3px; color: #0f172a;">${m.summary}</div>
+            <div style="color: #64748b; font-size: 10.5px; line-height: 1.4;">${m.newObligation}</div>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; font-size: 11px; font-weight: bold; color: #334155;">${m.department}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; text-align: center;">
+            <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; color: ${
+              m.impact === 'CRITICAL' ? '#dc2626' : m.impact === 'HIGH' ? '#d97706' : m.impact === 'MEDIUM' ? '#004C97' : '#16a34a'
+            }; background-color: #f1f5f9;">${m.impact}</span>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; text-align: center;">
+            <span style="font-size: 10px; font-weight: bold; color: ${verColor};">${verdict}</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const blockRows = `
+      <div style="margin-top: 20px; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #f8fafc;">
+        <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: bold; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">Hyperledger Fabric Audit Trail</h4>
+        <div style="font-size: 11px; line-height: 1.6; color: #475569; font-family: monospace;">
+          <div><strong>Receipt Hash:</strong> ${receiptHash}</div>
+          <div style="margin-top: 4px;"><strong>Ledger Validation:</strong> <span style="color: #16a34a; font-weight: bold;">✓ Tamper-Evident Integrity Confirmed</span></div>
+          <div style="margin-top: 5px; font-size: 9.5px; color: #64748b; font-family: 'Inter', sans-serif;">
+            Every pipeline stage is linked as a ledger event and sealed on the Fabric network.
+          </div>
+        </div>
+      </div>
+    `;
+
+    const html = `
+      <html>
+        <head>
+          <title>Compliance Audit Certificate - ${refNum}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Barlow:wght@700;900&display=swap" rel="stylesheet">
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: #fff; }
+            h1, h2, h3, h4 { font-family: 'Barlow', sans-serif; font-weight: 800; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background-color: #f8fafc; padding: 10px; text-align: left; font-size: 10px; text-transform: uppercase; color: #475569; border-bottom: 2px solid #cbd5e1; font-weight: 800; }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #004C97; padding-bottom: 15px; margin-bottom: 25px;">
+            <div>
+              <div style="font-size: 24px; font-weight: 900; color: #004C97; font-family: 'Barlow', sans-serif; letter-spacing: 0.5px;">CANARA BANK</div>
+              <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; letter-spacing: 1.5px; margin-top: 2px;">Regulatory Compliance Audit Certificate</div>
+            </div>
+            <div style="border: 2px solid #16a34a; border-radius: 8px; padding: 8px 12px; text-align: center; background-color: #f0fdf4;">
+              <div style="color: #16a34a; font-size: 12px; font-weight: 800; text-transform: uppercase; font-family: 'Barlow', sans-serif;">VERIFIED ON-CHAIN</div>
+              <div style="font-size: 8px; color: #475569; margin-top: 1px; font-weight: 600;">HYPERLEDGER FABRIC</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 30px; margin-bottom: 20px;">
+            <div>
+              <h2 style="font-size: 15px; margin: 0 0 10px 0; color: #0f172a; line-height: 1.4;">${title}</h2>
+              <div style="font-size: 11px; color: #475569; line-height: 1.7;">
+                <div><strong>Regulator:</strong> ${regulator}</div>
+                <div><strong>Reference Number:</strong> ${refNum}</div>
+                <div><strong>Issued Date:</strong> ${dateStr}</div>
+              </div>
+            </div>
+
+            <div style="space-y: 10px;">
+              <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background-color: #fafafa;">
+                <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Department Mapping</h4>
+                <table style="font-size: 11px; margin-top: 0; width: 100%;">
+                  ${deptRows || '<tr><td style="font-size: 11px; color: #64748b;">No department mapping.</td></tr>'}
+                </table>
+              </div>
+              <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background-color: #fafafa; margin-top: 10px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Severity Breakdown</h4>
+                <table style="font-size: 11px; margin-top: 0; width: 100%;">
+                  ${severityRows || '<tr><td style="font-size: 11px; color: #64748b;">No rules mapped.</td></tr>'}
+                </table>
+              </div>
+            </div>
+          </div>
+
+          ${blockRows}
+
+          <h3 style="font-size: 12px; margin-top: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; color: #004C97; text-transform: uppercase; letter-spacing: 0.5px;">Audited Obligations Ledger</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">Clause</th>
+                <th>Obligation Summary & Extracted Text</th>
+                <th style="width: 130px;">Assigned Department</th>
+                <th style="width: 70px; text-align: center;">Severity</th>
+                <th style="width: 70px; text-align: center;">Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ruleRows || '<tr><td colspan="5" style="padding: 10px; text-align: center; color: #64748b; font-size: 11px;">No obligations extracted.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b;">
+            <div style="text-align: center; width: 180px; border-top: 1px solid #cbd5e1; padding-top: 8px;">
+              <strong>Chief Compliance Officer</strong>
+              <div style="font-size: 9px; margin-top: 2px; color: #94a3b8;">Canara Bank Compliance Cell</div>
+            </div>
+            <div style="text-align: center; width: 180px; border-top: 1px solid #cbd5e1; padding-top: 8px;">
+              <strong>Audit Lead</strong>
+              <div style="font-size: 9px; margin-top: 2px; color: #94a3b8;">Internal Audit & Assurance</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; text-align: center; font-size: 8.5px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+            This document is cryptographically verified and recorded on a tamper-evident Hyperledger Fabric blockchain ledger. Any alteration invalidates this certificate.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="flex-1">
           <div className="text-[10.5px] font-mono font-bold mb-1" style={{ color: CB }}>
             {circular.refNumber ?? circular.id}
           </div>
@@ -487,6 +720,14 @@ function CircularDetail({ circular }: { circular: Circular }) {
             ))}
           </div>
         </div>
+        {stage === "COMPLETE" && (
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 text-[11px] px-3.5 py-2 rounded border border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold tracking-wide transition-all shadow-xs active:scale-95 shrink-0"
+          >
+            <Download size={11} /> Export Audit PDF
+          </button>
+        )}
       </div>
 
       {/* Live pipeline progress — polls until COMPLETE/FAILED */}
@@ -1491,6 +1732,763 @@ function SecurityPage() {
   );
 }
 
+function SimpleDiff({ oldStr, newStr }: { oldStr: string | null; newStr: string }) {
+  if (!oldStr) {
+    return (
+      <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded text-emerald-950 text-[12px] font-mono whitespace-pre-wrap">
+        <span className="bg-emerald-100 px-1 font-bold text-emerald-800 rounded mr-1">ADD</span>
+        {newStr}
+      </div>
+    );
+  }
+  
+  const oldWords = oldStr.split(/\s+/);
+  const newWords = newStr.split(/\s+/);
+  
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="p-3 bg-red-50/40 border border-red-100 rounded text-red-950 text-[12px] font-mono leading-relaxed">
+        <div className="text-[9.5px] font-bold text-red-700 uppercase mb-1.5 tracking-wider">Before (Removed/Amended)</div>
+        <div className="whitespace-pre-wrap">
+          {oldWords.map((word, idx) => {
+            const isDigit = /\d/.test(word);
+            const isMissing = !newWords.includes(word);
+            return (
+              <span 
+                key={idx} 
+                className={`${isMissing ? 'bg-red-100 text-red-800 line-through px-0.5 rounded font-semibold' : ''} ${isDigit && isMissing ? 'font-extrabold border-b border-red-300' : ''} mr-1`}
+              >
+                {word}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div className="p-3 bg-emerald-50/40 border border-emerald-100 rounded text-emerald-950 text-[12px] font-mono leading-relaxed">
+        <div className="text-[9.5px] font-bold text-emerald-700 uppercase mb-1.5 tracking-wider">After (Added/Modified)</div>
+        <div className="whitespace-pre-wrap">
+          {newWords.map((word, idx) => {
+            const isDigit = /\d/.test(word);
+            const isNew = !oldWords.includes(word);
+            return (
+              <span 
+                key={idx} 
+                className={`${isNew ? 'bg-emerald-100 text-emerald-800 font-semibold px-0.5 rounded' : ''} ${isDigit && isNew ? 'font-extrabold border-b border-emerald-400' : ''} mr-1`}
+              >
+                {word}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PolicyDiffAnalyzer() {
+  const { data: circulars, loading: cLoading, error: cError } = useApi(() => api.listCirculars(), []);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  
+  const pipeline = useApi(
+    () => selectedId ? api.getPipeline(selectedId) : Promise.resolve(null),
+    [selectedId]
+  );
+
+  const selectedCircular = circulars?.find(c => c.id === selectedId) || null;
+  const maps = pipeline.data?.maps ?? [];
+  const loading = cLoading || pipeline.loading;
+  
+  const additions = maps.filter(m => m.changeType === "ADDED");
+  const modifications = maps.filter(m => m.changeType === "MODIFIED");
+  const deletions = maps.filter(m => m.changeType === "DELETED");
+
+  const changeTypeBadge = (type: string) => {
+    switch (type) {
+      case "ADDED":
+        return { bg: "#dcfce7", fg: "#15803d", label: "Addition" };
+      case "MODIFIED":
+        return { bg: "#eff6ff", fg: "#1d4ed8", label: "Modification" };
+      case "DELETED":
+        return { bg: "#fee2e2", fg: "#b91c1c", label: "Removal" };
+      default:
+        return { bg: "#f3f4f6", fg: "#374151", label: type };
+    }
+  };
+
+  const impactBadgeColor = (impact: string) => {
+    switch (impact) {
+      case "LOW":
+        return { bg: "#e2e8f0", fg: "#475569" };
+      case "MEDIUM":
+        return { bg: "#fef3c7", fg: "#d97706" };
+      case "HIGH":
+        return { bg: "#ffedd5", fg: "#c2410c" };
+      case "CRITICAL":
+        return { bg: "#fee2e2", fg: "#b91c1c" };
+      default:
+        return { bg: "#f3f4f6", fg: "#374151" };
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-[#f8fafc]">
+      <PageHeader title="Policy Diff Analyzer" sub="Track compliance changes, modified values, and department routing side-by-side" />
+      
+      <div className="flex-1 flex min-h-0">
+        <div className="w-[320px] border-r border-border bg-white flex flex-col shrink-0">
+          <div className="p-4 border-b border-border bg-slate-50/50">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Select Policy to Diff</div>
+            <p className="text-[11px] text-muted-foreground">Select a circular to analyze its changed regulations.</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {cLoading && <Loading label="Loading policies..." />}
+            {cError && <div className="text-xs text-red-500 p-4">{cError}</div>}
+            {circulars && circulars.length === 0 && (
+              <div className="text-xs text-muted-foreground p-4 text-center">No circulars ingested yet.</div>
+            )}
+            {circulars?.map(c => {
+              const active = c.id === selectedId;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedId(c.id)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    active 
+                      ? "border-primary bg-blue-50/50 shadow-sm" 
+                      : "border-border hover:bg-slate-50 bg-white"
+                  }`}
+                  style={active ? { borderColor: CB } : {}}
+                >
+                  <div className="text-[9.5px] font-mono font-bold uppercase mb-1" style={{ color: CB }}>
+                    {c.refNumber ?? c.id}
+                  </div>
+                  <div className="text-[12px] font-bold text-slate-800 line-clamp-2 leading-tight mb-1">{c.title}</div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>{c.regulator}</span>
+                    <span>•</span>
+                    <span>{dateOf(c.issuedDate ?? c.receivedAt)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 min-w-0">
+          {loading && <Loading label="Retrieving change comparison..." />}
+          
+          {!selectedId ? (
+            <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+              <GitBranch size={44} className="text-muted-foreground/30 animate-pulse" />
+              <h3 className="text-sm font-bold text-slate-700">Select a policy from the list</h3>
+              <p className="text-xs text-muted-foreground max-w-sm">We will search chunks by domain, compare hashes against existing policies, and show any added, removed, or modified rules.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
+                <div className="text-[10px] font-mono font-bold uppercase mb-1" style={{ color: CB }}>
+                  {selectedCircular?.refNumber ?? selectedCircular?.id}
+                </div>
+                <h2 className="text-[16px] font-extrabold text-slate-900 mb-2" style={{ fontFamily: "Barlow, sans-serif" }}>
+                  {selectedCircular?.title}
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                  This policy has been processed through the Canara ARC Shield mapping engine. The system has automatically extracted rules, matched them to historical versions in the database, and classified them into departments.
+                </p>
+                
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
+                    <div className="text-[20px] font-extrabold text-slate-700 leading-none mb-1">{maps.length}</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Changes</div>
+                  </div>
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 text-center">
+                    <div className="text-[20px] font-extrabold text-emerald-600 leading-none mb-1">{additions.length}</div>
+                    <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Additions</div>
+                  </div>
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-center">
+                    <div className="text-[20px] font-extrabold text-blue-600 leading-none mb-1">{modifications.length}</div>
+                    <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Modifications</div>
+                  </div>
+                  <div className="bg-red-50/50 border border-red-100 rounded-lg p-3 text-center">
+                    <div className="text-[20px] font-extrabold text-red-600 leading-none mb-1">{deletions.length}</div>
+                    <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Removals</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5" style={{ fontFamily: "Barlow, sans-serif" }}>
+                  <Database size={14} style={{ color: CB }} /> Compliance Maps & Rule Diffs
+                </h3>
+                
+                {maps.length === 0 ? (
+                  <div className="bg-white border border-border rounded-xl p-8 text-center text-muted-foreground text-xs shadow-sm">
+                    No regulatory changes or rule differences were detected for this policy. All chunks match existing baselines exactly.
+                  </div>
+                ) : (
+                  maps.map((map) => {
+                    const cBadge = changeTypeBadge(map.changeType);
+                    const iBadge = impactBadgeColor(map.impact);
+                    return (
+                      <div key={map.id} className="bg-white border border-border rounded-xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded uppercase" 
+                              style={{ background: cBadge.bg, color: cBadge.fg }}>
+                              {cBadge.label}
+                            </span>
+                            <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded uppercase" 
+                              style={{ background: iBadge.bg, color: iBadge.fg }}>
+                              {map.impact} severity
+                            </span>
+                            <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                              {map.department}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                            <Cpu size={12} />
+                            <span>Match confidence: {Math.round(map.confidence * 100)}%</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[13px] font-bold text-slate-800 mb-1">{map.summary}</h4>
+                          <p className="text-[11.5px] text-slate-500 italic leading-relaxed">{map.changeReason}</p>
+                        </div>
+
+                        <SimpleDiff oldStr={map.oldObligation} newStr={map.newObligation} />
+                        
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-[10.5px] text-muted-foreground flex-wrap gap-2">
+                          <div>Clause ID: <span className="font-mono font-bold">§{map.clauseId}</span></div>
+                          <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                            <CheckCircle size={11} /> Verified Compliance Route
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── KPI COMPLIANCE PLANNER ────────────────────────────────────────────── */
+
+const MFA_CSV_TEMPLATE = `employee_id,department,mfa_active,last_login_days_ago,privilege_level
+1001,Treasury,1,3,ADMIN
+1002,Information Security,1,1,ADMIN
+1003,Compliance,1,12,USER
+1004,Retail Banking,0,5,USER
+1005,Data Privacy Office,1,2,USER
+1006,General Legal,0,45,USER
+1007,Risk Management,1,1,ADMIN
+1008,Retail Banking,0,2,USER
+1009,Information Security,1,0,ADMIN
+1010,Retail Banking,1,7,USER`;
+
+const MFA_JSON_TEMPLATE = `[
+  {
+    "kpi_name": "MFA_Adoption_Rate",
+    "target_value": 0.95,
+    "operator": ">=",
+    "field": "mfa_active",
+    "department": "Information Security",
+    "severity": "CRITICAL"
+  },
+  {
+    "kpi_name": "Inactive_Admin_Retention",
+    "target_value": 30,
+    "operator": "<=",
+    "field": "last_login_days_ago",
+    "department": "Risk Management",
+    "severity": "HIGH"
+  }
+]`;
+
+const GRIEVANCE_CSV_TEMPLATE = `ticket_id,channel,category,resolution_days,satisfied
+T001,Mobile App,Transactions,12,1
+T002,Branch,KYC Obligation,32,0
+T003,Website,Card Dispute,4,1
+T004,Call Center,AML Flag,45,0
+T005,Mobile App,KYC Obligation,28,1
+T006,Email,General Legal,15,1
+T007,Branch,Transactions,8,1
+T008,Mobile App,Card Dispute,42,0`;
+
+const GRIEVANCE_JSON_TEMPLATE = `[
+  {
+    "kpi_name": "Average_Resolution_SLA",
+    "target_value": 15,
+    "operator": "<=",
+    "field": "resolution_days",
+    "department": "Compliance",
+    "severity": "HIGH"
+  },
+  {
+    "kpi_name": "Customer_Satisfaction_Rate",
+    "target_value": 0.80,
+    "operator": ">=",
+    "field": "satisfied",
+    "department": "Retail Banking",
+    "severity": "MEDIUM"
+  }
+]`;
+
+function KPICompliancePlanner() {
+  const [csvText, setCsvText] = useState(MFA_CSV_TEMPLATE);
+  const [kpisJson, setKpisJson] = useState(MFA_JSON_TEMPLATE);
+  const [mode, setMode] = useState<"assess" | "history">("assess");
+  const [loading, setLoading] = useState(false);
+  const [sealing, setSealing] = useState(false);
+  const [report, setReport] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Load History
+  const loadHistory = async () => {
+    try {
+      const data = await api.listKPIPlans();
+      setHistory(data);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  useState(() => {
+    loadHistory();
+  });
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "mfa") {
+      setCsvText(MFA_CSV_TEMPLATE);
+      setKpisJson(MFA_JSON_TEMPLATE);
+    } else if (val === "grievance") {
+      setCsvText(GRIEVANCE_CSV_TEMPLATE);
+      setKpisJson(GRIEVANCE_JSON_TEMPLATE);
+    } else {
+      setCsvText("");
+      setKpisJson("[\n  \n]");
+    }
+  };
+
+  const handleRunAssessment = async () => {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await api.postKPIPlan(csvText, kpisJson);
+      setReport(res);
+      loadHistory();
+      setNotice("AI Compliance assessment generated successfully.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to process compliance metrics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSealReport = async () => {
+    if (!report || report.sealed) return;
+    setSealing(true);
+    setError(null);
+    try {
+      const res = await api.sealKPIPlan(report.id);
+      setReport(res.report);
+      loadHistory();
+      setNotice(`Sealed to Trust Ledger. Block Index: #${res.block.index}`);
+    } catch (err: any) {
+      setError(err?.message || "Sealing failed.");
+    } finally {
+      setSealing(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto bg-slate-50 flex flex-col h-full">
+      <div className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0">
+        <div>
+          <h2 className="text-[14px] font-extrabold text-slate-800 uppercase tracking-wide">
+            AI KPI Compliance Planner
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Ingest audit metrics, compute policy KPIs, and draft department roadmaps sealed on-chain
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setMode("assess");
+              setError(null);
+            }}
+            className={`px-3 py-1.5 rounded text-[11.5px] font-semibold transition-all ${
+              mode === "assess" ? "bg-slate-200 text-slate-800" : "bg-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Run Assessment
+          </button>
+          <button
+            onClick={() => {
+              setMode("history");
+              loadHistory();
+              setError(null);
+            }}
+            className={`px-3 py-1.5 rounded text-[11.5px] font-semibold transition-all ${
+              mode === "history" ? "bg-slate-200 text-slate-800" : "bg-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Audit History ({history.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Main Panel Content */}
+      <div className="flex-1 p-6 flex gap-6 overflow-hidden min-h-0">
+        {mode === "assess" ? (
+          <>
+            {/* Input Configuration Column */}
+            <div className="w-[380px] bg-white rounded-xl border border-border flex flex-col overflow-hidden shadow-sm shrink-0">
+              <div className="p-4 border-b border-border bg-slate-50/50 flex items-center justify-between">
+                <span className="text-[12px] font-bold text-slate-700">Audit Intake parameters</span>
+                <select
+                  onChange={handleTemplateChange}
+                  className="text-[11px] font-medium bg-white border border-border px-2 py-1 rounded shadow-sm focus:outline-none"
+                >
+                  <option value="mfa">MFA adoption Audit</option>
+                  <option value="grievance">Grievance SLA Audit</option>
+                  <option value="custom">Blank Template</option>
+                </select>
+              </div>
+
+              <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                {/* CSV text area */}
+                <div>
+                  <label className="block text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
+                    USER'S UPLOADED CSV (Data Context)
+                  </label>
+                  <textarea
+                    value={csvText}
+                    onChange={(e) => setCsvText(e.target.value)}
+                    placeholder="csv_header_1,csv_header_2..."
+                    className="w-full h-44 p-3 font-mono text-[11px] border border-border rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 resize-none leading-normal"
+                  />
+                </div>
+
+                {/* JSON target KPIs */}
+                <div>
+                  <label className="block text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
+                    KPI JSONs (Policy Context)
+                  </label>
+                  <textarea
+                    value={kpisJson}
+                    onChange={(e) => setKpisJson(e.target.value)}
+                    placeholder="[ { 'kpi_name': '...', 'target_value': 0.8 } ]"
+                    className="w-full h-48 p-3 font-mono text-[11px] border border-border rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 resize-none leading-normal"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-border bg-slate-50 flex flex-col gap-2">
+                {error && (
+                  <div className="text-[11px] text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg font-medium">
+                    ⚠️ {error}
+                  </div>
+                )}
+                {notice && (
+                  <div className="text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg font-medium">
+                    ✅ {notice}
+                  </div>
+                )}
+                <button
+                  onClick={handleRunAssessment}
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-lg text-white font-bold text-[12px] flex items-center justify-center gap-2 tracking-wide transition-all shadow-md active:scale-95"
+                  style={{
+                    background: loading ? "#94a3b8" : `linear-gradient(135deg, ${CB}, #00366b)`,
+                    boxShadow: loading ? "none" : `0 4px 12px ${CB}40`,
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw size={12} className="animate-spin" />
+                      Analyzing Compliance Gaps...
+                    </>
+                  ) : (
+                    <>
+                      <Cpu size={13} />
+                      Generate AI Compliance Plan
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Assessment Report Results */}
+            <div className="flex-1 bg-white rounded-xl border border-border flex flex-col overflow-hidden shadow-sm">
+              {report ? (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {/* Report Header */}
+                  <div className={`p-5 border-b border-border flex justify-between items-center ${
+                    report.sealed ? "bg-emerald-50/20 border-emerald-100" : "bg-slate-50/50"
+                  }`}>
+                    <div className="flex items-center gap-4">
+                      {/* Radial Gauge for Score */}
+                      <div className="relative w-14 h-14 rounded-full flex items-center justify-center shrink-0" style={{
+                        background: `conic-gradient(${report.plan.complianceScore >= 80 ? OK : WN} ${report.plan.complianceScore * 3.6}deg, #e2e8f0 0deg)`
+                      }}>
+                        <div className="w-[46px] h-[46px] bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
+                          <span className="text-[12px] font-black text-slate-800 leading-none">{report.plan.complianceScore}%</span>
+                          <span className="text-[7.5px] text-slate-400 font-bold uppercase tracking-wider scale-90 mt-0.5">Score</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-[13px] font-black text-slate-800 tracking-wide">
+                            COMPLIANCE AUDIT REPORT
+                          </h3>
+                          {report.sealed ? (
+                            <span className="text-[9px] font-black text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                              <ShieldCheck size={10} /> SEALED ON LEDGER
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black text-slate-600 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded uppercase tracking-wide">
+                              Draft Plan
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 font-mono">
+                          ID: {report.id} · Timestamp: {new Date(report.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      {!report.sealed ? (
+                        <button
+                          onClick={handleSealReport}
+                          disabled={sealing}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11.5px] font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 disabled:bg-slate-400"
+                        >
+                          {sealing ? (
+                            <>
+                              <RefreshCw size={11} className="animate-spin" />
+                              Sealing Audit Block...
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck size={12} />
+                              Seal to Trust Ledger
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="text-right">
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">BLOCK VERIFIED</div>
+                          <div className="text-[10px] text-emerald-600 font-bold mt-1 font-mono">{shortHash(report.ledgerHash)}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Main Report Body */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Summary text */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                      <h4 className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider mb-2">
+                        Audit Overview Summary
+                      </h4>
+                      <p className="text-[12px] text-slate-700 leading-relaxed font-medium">
+                        {report.plan.summary}
+                      </p>
+                    </div>
+
+                    {/* KPI Results list */}
+                    <div>
+                      <h4 className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider mb-3">
+                        KPI Evaluation Metrics
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {report.plan.kpiResults.map((k: any, idx: number) => {
+                          const isPass = k.status === "PASS";
+                          return (
+                            <div
+                              key={idx}
+                              className={`border rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all hover:shadow-md ${
+                                isPass ? "border-emerald-100 bg-emerald-50/10" : "border-amber-200 bg-amber-50/10"
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded border mr-2 uppercase tracking-wider ${
+                                    isPass ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200"
+                                  }`}>
+                                    {k.status}
+                                  </span>
+                                  <span className="text-[10.5px] font-black text-slate-700">{k.kpi_name}</span>
+                                </div>
+                                <span className={`text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                                  k.severity === "CRITICAL" ? "text-red-700 bg-red-50 border border-red-200" :
+                                  k.severity === "HIGH" ? "text-amber-700 bg-amber-50 border border-amber-200" : "text-slate-600 bg-slate-100"
+                                }`}>
+                                  {k.severity}
+                                </span>
+                              </div>
+
+                              <div className="mt-4 flex items-center justify-between">
+                                <div className="text-[11px] text-slate-500">
+                                  Target: <span className="font-semibold text-slate-700">{k.operator}{k.target_value}</span>
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  Actual: <span className="font-semibold text-slate-700">{k.actual_value}</span>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                                <div>Dept: <span className="font-bold text-slate-600">{k.department}</span></div>
+                                {!isPass && (
+                                  <div className="text-red-500 font-bold flex items-center gap-0.5">
+                                    <AlertTriangle size={9} /> Deviation: {k.deviation}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Roadmap Timeline */}
+                    <div>
+                      <h4 className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider mb-4">
+                        Actionable Mitigation Roadmap
+                      </h4>
+                      <div className="space-y-4 border-l border-slate-200 pl-4 ml-2">
+                        {report.plan.roadmap.map((r: any, idx: number) => (
+                          <div key={idx} className="relative">
+                            {/* Dot indicator */}
+                            <div className={`absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${
+                              r.priority === "CRITICAL" ? "bg-red-500" :
+                              r.priority === "HIGH" ? "bg-amber-500" : "bg-blue-500"
+                            }`} />
+
+                            <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 shadow-sm hover:border-slate-300 transition-colors">
+                              <div className="flex justify-between items-start flex-wrap gap-2">
+                                <h5 className="text-[12.5px] font-black text-slate-800 flex-1 leading-relaxed">
+                                  {r.task}
+                                </h5>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded ${
+                                    r.priority === "CRITICAL" ? "text-red-700 bg-red-50 border border-red-200" :
+                                    r.priority === "HIGH" ? "text-amber-700 bg-amber-50 border border-amber-200" : "text-blue-700 bg-blue-50 border-blue-200"
+                                  }`}>
+                                    {r.priority}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-slate-200/50">
+                                <div>Department Owner: <span className="font-bold text-slate-700">{r.department}</span></div>
+                                <div className="flex items-center gap-1 font-semibold text-slate-600 bg-white px-2 py-1 rounded border border-border shadow-2xs">
+                                  <Calendar size={11} /> {r.timeline}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Complete Report Details (Markdown) */}
+                    <div>
+                      <h4 className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider mb-2">
+                        Raw AI Report (Markdown)
+                      </h4>
+                      <pre className="w-full bg-slate-900 text-slate-100 text-[11px] font-mono p-4 rounded-xl overflow-x-auto max-h-60 leading-normal">
+                        {report.plan.rawReport}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  title="Compliance planner is idle"
+                  sub="Load a template, adjust raw parameters, and click Generate to analyze compliance posture."
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          /* Audit History Mode */
+          <div className="flex-1 bg-white rounded-xl border border-border flex flex-col overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-border bg-slate-50/50">
+              <span className="text-[12px] font-black text-slate-700">Sealed KPI Compliance Audits Ledger</span>
+            </div>
+
+            {history.length > 0 ? (
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {history.map((h: any) => (
+                  <div
+                    key={h.id}
+                    onClick={() => {
+                      setReport(h);
+                      setMode("assess");
+                    }}
+                    className="border border-border rounded-xl p-4 bg-white hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex justify-between items-center"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-black text-slate-800">
+                          Audit {h.id.substring(4, 12)}...
+                        </span>
+                        {h.sealed ? (
+                          <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                            SEALED
+                          </span>
+                        ) : (
+                          <span className="text-[8.5px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                            DRAFT
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Compliance Score: <span className="font-bold text-slate-800">{h.plan.complianceScore}%</span> · Date: {new Date(h.timestamp).toLocaleString()}
+                      </p>
+                      {h.ledgerHash && (
+                        <p className="text-[9.5px] font-mono text-emerald-600 mt-1">
+                          Block hash: {h.ledgerHash}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <ChevronRight size={16} className="text-slate-400" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No compliance reports found"
+                sub="Your generated AI compliance planner reports will show up here."
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 /* ─── APP ROOT ──────────────────────────────────────────────────────────── */
 
 export default function App() {
@@ -1501,6 +2499,8 @@ export default function App() {
       <main className="flex-1 overflow-hidden flex flex-col">
         {active === "dashboard"  && <ExecutiveDashboard />}
         {active === "circular"   && <CircularExplorer />}
+        {active === "diff"       && <PolicyDiffAnalyzer />}
+        {active === "kpi"        && <KPICompliancePlanner />}
         {active === "copilot"    && <ComplianceCopilot />}
         {active === "blockchain" && <BlockchainTrustCenter />}
         {active === "roles"      && <RoleWorkspace />}

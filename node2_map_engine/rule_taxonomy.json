@@ -1,0 +1,435 @@
+{
+  "policy_types": {
+    "KYC": {
+      "regulatory_domain": "Know Your Customer",
+      "keywords": ["kyc", "know your customer", "customer identification", "cip", "onboarding"],
+      "header_patterns": [
+        "KYC.*Norms",
+        "Customer.*Identification.*Process",
+        "Account.*Opening",
+        "Identification.*of.*Customers",
+        "Due.*Diligence.*Customer"
+      ],
+      "related_regulations": [
+        "Master Direction - KYC",
+        "FATF Recommendations"
+      ]
+    },
+    "AML": {
+      "regulatory_domain": "Anti-Money Laundering",
+      "keywords": ["aml", "anti-money laundering", "money laundering", "layering", "placement"],
+      "header_patterns": [
+        "AML.*Procedures",
+        "Anti-Money.*Laundering",
+        "Money.*Laundering",
+        "Suspicious.*Transaction"
+      ],
+      "related_regulations": [
+        "Prevention of Money Laundering Act",
+        "Master Direction - AML"
+      ]
+    },
+    "CFT": {
+      "regulatory_domain": "Counter Financing Terrorism",
+      "keywords": ["cft", "counter financing", "terrorism financing", "sanctions", "terrorism"],
+      "header_patterns": [
+        "CFT.*Measures",
+        "Counter.*Financing.*Terrorism",
+        "Terrorist.*Financing",
+        "Sanctions.*Screening"
+      ],
+      "related_regulations": [
+        "Prevention of Terrorism Act",
+        "FATF Recommendations",
+        "UN Sanctions"
+      ]
+    },
+    "CYBERSECURITY": {
+      "regulatory_domain": "Cyber Security",
+      "keywords": ["cyber", "security", "encryption", "authentication", "mfa", "soc"],
+      "header_patterns": [
+        "Cyber.*Security",
+        "Information.*Security",
+        "Digital.*Security",
+        "Security.*Controls",
+        "Authentication"
+      ],
+      "related_regulations": [
+        "Master Direction - IT Security",
+        "Cyber Security Framework",
+        "CERT-In Guidelines"
+      ]
+    },
+    "DATA_PROTECTION": {
+      "regulatory_domain": "Data Privacy & Protection",
+      "keywords": ["data protection", "privacy", "gdpr", "dpia", "personal data", "consent"],
+      "header_patterns": [
+        "Data.*Protection",
+        "Privacy.*Policy",
+        "Personal.*Data",
+        "Data.*Governance",
+        "Consent.*Management"
+      ],
+      "related_regulations": [
+        "Digital Personal Data Protection Act",
+        "Data Privacy Guidelines"
+      ]
+    },
+    "PAYMENTS": {
+      "regulatory_domain": "Payment Systems",
+      "keywords": ["payment", "upi", "neft", "rtgs", "merchant", "acquirer"],
+      "header_patterns": [
+        "Payment.*System",
+        "UPI.*Guidelines",
+        "NEFT.*RTGS",
+        "Merchant.*Acquiring",
+        "Digital.*Payment"
+      ],
+      "related_regulations": [
+        "NPCI Guidelines",
+        "Master Direction - Digital Payments"
+      ]
+    },
+    "CREDIT_RISK": {
+      "regulatory_domain": "Credit Risk Management",
+      "keywords": ["credit", "lending", "loan", "exposure", "default", "classification"],
+      "header_patterns": [
+        "Credit.*Risk",
+        "Loan.*Management",
+        "Asset.*Classification",
+        "NPA.*Management",
+        "Lending.*Norms"
+      ],
+      "related_regulations": [
+        "Master Direction - Credit Risk",
+        "NPA Guidelines"
+      ]
+    },
+    "OPERATIONAL_RISK": {
+      "regulatory_domain": "Operational Risk",
+      "keywords": ["operational", "risk management", "business continuity", "disaster recovery"],
+      "header_patterns": [
+        "Operational.*Risk",
+        "Business.*Continuity",
+        "Disaster.*Recovery",
+        "Risk.*Management",
+        "BCP"
+      ],
+      "related_regulations": [
+        "Operational Risk Guidelines",
+        "BC/DR Framework"
+      ]
+    }
+  },
+
+  "rule_types": {
+    "IDENTITY_VERIFICATION": {
+      "category": "KYC",
+      "keywords": ["identity", "verify", "verification", "authenticate", "identification", "pan", "aadhaar", "voter id"],
+      "trigger_phrases": [
+        "verify.*identity",
+        "customer.*must.*identify",
+        "obtain.*identification",
+        "official.*valid.*document",
+        "ovd"
+      ],
+      "department_mapping": ["Compliance", "Legal", "Customer Service"],
+      "sub_rules": {
+        "PAN_VERIFICATION": {
+          "keywords": ["pan", "permanent account number"],
+          "implementation": "backend.kyc.pan_validator"
+        },
+        "AADHAAR_VERIFICATION": {
+          "keywords": ["aadhaar", "unique identification"],
+          "implementation": "backend.kyc.aadhaar_validator"
+        },
+        "BIOMETRIC_VERIFICATION": {
+          "keywords": ["biometric", "fingerprint", "iris"],
+          "implementation": "backend.kyc.biometric_validator"
+        }
+      }
+    },
+
+    "DOCUMENT_COLLECTION": {
+      "category": "KYC",
+      "keywords": ["document", "collect", "obtain", "proof", "submission", "attachment"],
+      "trigger_phrases": [
+        "shall.*collect",
+        "shall.*obtain",
+        "proof of.*",
+        "supporting.*document",
+        "bank shall require"
+      ],
+      "department_mapping": ["Compliance", "Customer Service"],
+      "sub_rules": {
+        "PROOF_OF_ADDRESS": {
+          "keywords": ["proof of address", "poa", "address"],
+          "implementation": "backend.kyc.poa_collector"
+        },
+        "PROOF_OF_IDENTITY": {
+          "keywords": ["proof of identity", "poi"],
+          "implementation": "backend.kyc.poi_collector"
+        }
+      }
+    },
+
+    "CDD_REQUIREMENT": {
+      "category": "KYC",
+      "keywords": ["due diligence", "cdd", "customer profile", "assess", "onboarding"],
+      "trigger_phrases": [
+        "customer due diligence",
+        "cdd.*shall.*performed",
+        "assess.*customer",
+        "understand.*customer"
+      ],
+      "department_mapping": ["Compliance", "Risk Management"],
+      "sub_rules": {
+        "RISK_ASSESSMENT": {
+          "keywords": ["risk", "assess", "evaluate"],
+          "implementation": "backend.compliance.risk_calculator"
+        }
+      }
+    },
+
+    "PERIODIC_REVIEW": {
+      "category": "KYC",
+      "keywords": ["periodic", "review", "update", "refresh", "re-kyc", "every"],
+      "trigger_phrases": [
+        "shall be.*updated.*every",
+        "review.*every.*year",
+        "re-kyc.*every",
+        "refresh.*periodically"
+      ],
+      "department_mapping": ["Compliance"],
+      "sub_rules": {
+        "ANNUAL_REVIEW": {
+          "keywords": ["annually", "every year"],
+          "frequency_months": 12
+        },
+        "BIENNIAL_REVIEW": {
+          "keywords": ["every 2 years", "biennial"],
+          "frequency_months": 24
+        }
+      }
+    },
+
+    "TRANSACTION_MONITORING": {
+      "category": "AML",
+      "keywords": ["monitor", "transaction", "sod (suspicious)", "aml", "screening"],
+      "trigger_phrases": [
+        "shall.*monitor",
+        "continuous.*monitoring",
+        "real-time.*monitoring",
+        "transaction.*screening"
+      ],
+      "department_mapping": ["Compliance", "Risk Management"],
+      "sub_rules": {
+        "REAL_TIME_MONITORING": {
+          "keywords": ["real-time", "online"],
+          "implementation": "backend.aml.realtime_monitor"
+        },
+        "BATCH_MONITORING": {
+          "keywords": ["batch", "daily", "weekly"],
+          "implementation": "backend.aml.batch_monitor"
+        }
+      }
+    },
+
+    "SANCTIONS_SCREENING": {
+      "category": "CFT",
+      "keywords": ["sanctions", "screening", "blacklist", "watchlist", "un list", "fatf"],
+      "trigger_phrases": [
+        "screen.*against.*list",
+        "sanctions.*list",
+        "ofac",
+        "un consolidated list"
+      ],
+      "department_mapping": ["Compliance"],
+      "sub_rules": {
+        "CONSOLIDATED_UN_LIST": {
+          "keywords": ["un", "consolidated"],
+          "data_source": "https://www.un.org/sc/suborg/en/sanctions/un-sc-consolidated-list"
+        },
+        "OFAC_SDN": {
+          "keywords": ["ofac", "sdn"],
+          "data_source": "https://ofac.treasury.gov/specially-designated-nationals"
+        }
+      }
+    },
+
+    "ENCRYPTION": {
+      "category": "CYBERSECURITY",
+      "keywords": ["encryption", "cipher", "tls", "ssl", "aes", "encrypted"],
+      "trigger_phrases": [
+        "shall be.*encrypted",
+        "encryption.*mandatory",
+        "encrypted.*transmission",
+        "end-to-end.*encryption"
+      ],
+      "department_mapping": ["Cybersecurity Wing", "IT Vertical"],
+      "sub_rules": {
+        "DATA_AT_REST_ENCRYPTION": {
+          "keywords": ["at rest", "storage"],
+          "standard": "AES-256"
+        },
+        "DATA_IN_TRANSIT_ENCRYPTION": {
+          "keywords": ["in transit", "transmission", "network"],
+          "standard": "TLS 1.2+"
+        }
+      }
+    },
+
+    "AUTHENTICATION": {
+      "category": "CYBERSECURITY",
+      "keywords": ["authentication", "mfa", "multi-factor", "password", "otp", "biometric"],
+      "trigger_phrases": [
+        "shall.*authenticate",
+        "multi-factor.*authentication",
+        "mfa.*mandatory",
+        "strong.*authentication"
+      ],
+      "department_mapping": ["Cybersecurity Wing", "Digital Banking Services"],
+      "sub_rules": {
+        "MFA_REQUIREMENT": {
+          "keywords": ["mfa", "multi-factor", "two-factor"],
+          "implementation": "backend.auth.mfa_enforcer"
+        },
+        "STRONG_PASSWORD": {
+          "keywords": ["password", "strength", "complexity"],
+          "implementation": "backend.auth.password_policy"
+        }
+      }
+    },
+
+    "CONSENT_MANAGEMENT": {
+      "category": "DATA_PROTECTION",
+      "keywords": ["consent", "explicit consent", "opt-in", "opt-out", "agreement"],
+      "trigger_phrases": [
+        "obtain.*consent",
+        "explicit.*consent",
+        "informed.*consent",
+        "customer.*agreement"
+      ],
+      "department_mapping": ["Compliance", "Legal Department"],
+      "sub_rules": {
+        "EXPLICIT_CONSENT": {
+          "keywords": ["explicit"],
+          "implementation": "backend.privacy.consent_tracker"
+        }
+      }
+    },
+
+    "RECORD_RETENTION": {
+      "category": "KYC",
+      "keywords": ["retain", "retention", "preserve", "archive", "deletion", "years"],
+      "trigger_phrases": [
+        "shall be.*retained.*for",
+        "retain.*records",
+        "deletion.*after",
+        "retention.*period"
+      ],
+      "department_mapping": ["Compliance"],
+      "sub_rules": {
+        "TEN_YEARS": {
+          "keywords": ["10 years", "decade"],
+          "retention_days": 3650
+        },
+        "FIVE_YEARS": {
+          "keywords": ["5 years"],
+          "retention_days": 1825
+        }
+      }
+    },
+
+    "INCIDENT_REPORTING": {
+      "category": "CYBERSECURITY",
+      "keywords": ["incident", "report", "notification", "breach", "vulnerability", "immediate"],
+      "trigger_phrases": [
+        "shall.*report.*incident",
+        "incident.*notification",
+        "breach.*reporting",
+        "notify.*regulator"
+      ],
+      "department_mapping": ["Cybersecurity Wing", "Compliance"],
+      "sub_rules": {
+        "IMMEDIATE_NOTIFICATION": {
+          "keywords": ["immediate", "without delay"],
+          "max_hours": 1
+        },
+        "TIMELY_NOTIFICATION": {
+          "keywords": ["within.*hours", "within.*days"],
+          "max_hours": 72
+        }
+      }
+    }
+  },
+
+  "rule_to_department_mapping": {
+    "IDENTITY_VERIFICATION": {
+      "primary": "Compliance Department",
+      "secondary": ["Customer Service", "Legal Department"],
+      "system_owner": "Compliance",
+      "owner_subsystem": "KYC Module"
+    },
+    "DOCUMENT_COLLECTION": {
+      "primary": "Compliance Department",
+      "secondary": ["Customer Service"],
+      "system_owner": "Customer Service",
+      "owner_subsystem": "Onboarding System"
+    },
+    "CDD_REQUIREMENT": {
+      "primary": "Compliance Department",
+      "secondary": ["Risk Management"],
+      "system_owner": "Compliance",
+      "owner_subsystem": "Risk Assessment Engine"
+    },
+    "PERIODIC_REVIEW": {
+      "primary": "Compliance Department",
+      "secondary": [],
+      "system_owner": "Compliance",
+      "owner_subsystem": "KYC Refresh System"
+    },
+    "TRANSACTION_MONITORING": {
+      "primary": "Compliance Department",
+      "secondary": ["Risk Management"],
+      "system_owner": "Compliance",
+      "owner_subsystem": "AML Monitoring System"
+    },
+    "SANCTIONS_SCREENING": {
+      "primary": "Compliance Department",
+      "secondary": [],
+      "system_owner": "Compliance",
+      "owner_subsystem": "Sanctions List Manager"
+    },
+    "ENCRYPTION": {
+      "primary": "Cybersecurity Wing",
+      "secondary": ["IT Vertical"],
+      "system_owner": "IT Vertical",
+      "owner_subsystem": "Security Infrastructure"
+    },
+    "AUTHENTICATION": {
+      "primary": "Cybersecurity Wing",
+      "secondary": ["Digital Banking Services"],
+      "system_owner": "IT Vertical",
+      "owner_subsystem": "Identity & Access Management"
+    },
+    "CONSENT_MANAGEMENT": {
+      "primary": "Compliance Department",
+      "secondary": ["Legal Department"],
+      "system_owner": "Compliance",
+      "owner_subsystem": "Consent Engine"
+    },
+    "RECORD_RETENTION": {
+      "primary": "Compliance Department",
+      "secondary": ["IT Vertical"],
+      "system_owner": "Compliance",
+      "owner_subsystem": "Data Governance"
+    },
+    "INCIDENT_REPORTING": {
+      "primary": "Cybersecurity Wing",
+      "secondary": ["Compliance Department"],
+      "system_owner": "Cybersecurity Wing",
+      "owner_subsystem": "SIEM & Incident Management"
+    }
+  }
+}

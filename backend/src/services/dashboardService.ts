@@ -16,6 +16,8 @@ export interface DashboardSummary {
   riskAlerts: number;
   sections: SectionScore[];
   pipelineStages: Record<string, number>;
+  departmentDistribution: Record<string, number>;
+  severityDistribution: Record<string, number>;
 }
 
 function statusFor(score: number): SectionScore["status"] {
@@ -68,6 +70,15 @@ async function compute(): Promise<DashboardSummary> {
     pipelineStages[p.stage] = (pipelineStages[p.stage] ?? 0) + 1;
   }
 
+  const departmentDistribution: Record<string, number> = {};
+  const severityDistribution: Record<string, number> = {};
+  for (const m of allMaps) {
+    const dept = m.department || "Unmapped";
+    departmentDistribution[dept] = (departmentDistribution[dept] ?? 0) + 1;
+    const imp = m.impact || "MEDIUM";
+    severityDistribution[imp] = (severityDistribution[imp] ?? 0) + 1;
+  }
+
   return {
     complianceScore,
     pendingMaps,
@@ -75,6 +86,8 @@ async function compute(): Promise<DashboardSummary> {
     riskAlerts,
     sections,
     pipelineStages,
+    departmentDistribution,
+    severityDistribution,
   };
 }
 

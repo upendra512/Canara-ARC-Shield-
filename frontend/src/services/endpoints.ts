@@ -79,3 +79,14 @@ export const updateSystem = (
     { value },
     "it",
   );
+
+export const postKPIPlan = (csvText: string, kpisJson: string) =>
+  post<KPIAuditReport>("/kpi/plan", { csvText, kpisJson }, "compliance");
+
+export const sealKPIPlan = (id: string) =>
+  post<{ report: KPIAuditReport; block: any }>(`/kpi/${id}/seal`, {}, "compliance");
+
+export const listKPIPlans = () => get<KPIAuditReport[]>("/kpi");
+
+export const getKPIPlan = (id: string) => get<KPIAuditReport>(`/kpi/${id}`);
+

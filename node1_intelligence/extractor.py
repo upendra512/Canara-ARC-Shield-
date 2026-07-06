@@ -34,7 +34,13 @@ _MAX_CLAUSES = int(os.getenv("NODE1_MAX_CLAUSES", "200"))
 
 
 def _segments(text: str) -> List[str]:
-    """Prefer numbered-clause boundaries; otherwise split into sentences."""
+    """Prefer section/paragraph markdown headings; fall back to numbered clauses or sentences."""
+    # Split on markdown headings (e.g. ## Section 12 or ## Paragraph 65)
+    heading_split = re.compile(r"(?m)^(?=#{1,4}\s+(?:Section|Paragraph|Clause|Part|\d+))")
+    if heading_split.search(text):
+        parts = heading_split.split(text)
+        return [p.strip() for p in parts if p and p.strip()]
+
     if _CLAUSE_MARKER.search(text):
         parts = _CLAUSE_MARKER.split(text)
         chunks = [p.strip() for p in parts if p and p.strip()]
@@ -158,12 +164,12 @@ def best_similarity(text: str, candidates: List[Dict], circular_id: Optional[str
     return {"circularId": hit.id, "similarity": round(hit.score, 3)}
 
 
-def extract_clauses(text: str) -> List[Dict]:
+def extract_clauses(text: str, doc_domain_key: Optional[str] = None) -> List[Dict]:
     """Obligation-bearing clauses, classified and capped. Each maps to a Node 2 chunk."""
     clauses: List[Dict] = []
     truncated = False
     for index, segment in enumerate(_segments(text)):
-        verdict = classify(segment)
+        verdict = classify(segment, doc_domain_key=doc_domain_key)
         if not verdict["obligationBearing"]:
             continue
         if len(clauses) >= _MAX_CLAUSES:
@@ -194,17 +200,26 @@ def extract_clauses(text: str) -> List[Dict]:
 def analyze_text(text: str, filename: str, linked: List[Dict], corpus: Optional[List[Dict]] = None,
                  circular_id: Optional[str] = None) -> Dict:
     """Full Node 1 verdict for a circular: regulator, title, date, sections, clauses."""
-    clauses = extract_clauses(text)
+    title = sanitize_title(extract_title(text, filename), text, filename, detect_regulator(text))
+    
+    # Classify overall document domain by title first
+    doc_domain_key, doc_domain_def, doc_domain_score = classify_domain(title)
+    if doc_domain_score == 0:
+        # Fallback to first part of text
+        fallback_key, fallback_def, fallback_score = classify_domain(text[:1500])
+        if fallback_score > 0:
+            doc_domain_key, doc_domain_def = fallback_key, fallback_def
+            
+    clauses = extract_clauses(text, doc_domain_key=doc_domain_key)
     if not clauses:
-        _, domain_def, _ = classify_domain(text)
         clauses = [
             {
                 "id": "CLA-000",
-                "section": domain_def["regSection"],
-                "title": extract_title(text, filename),
+                "section": doc_domain_def["regSection"],
+                "title": title,
                 "text": re.sub(r"\s+", " ", text[:600]).strip(),
                 "obligationBearing": False,
-                "_domain": None,
+                "_domain": doc_domain_key,
                 "_ruleType": None,
                 "_confidence": 0.3,
             }
@@ -219,7 +234,7 @@ def analyze_text(text: str, filename: str, linked: List[Dict], corpus: Optional[
             candidates.append(cand)
     return {
         "regulator": detect_regulator(text),
-        "title": sanitize_title(extract_title(text, filename), text, filename, detect_regulator(text)),
+        "title": title,
         "issuedDate": extract_issued_date(text),
         "sections": sections,
         "similarTo": best_similarity(text, candidates, circular_id=circular_id),

@@ -120,7 +120,8 @@ export interface LedgerBlock {
     | "VERIFICATION_EXECUTED"
     | "EVIDENCE_COLLECTED"
     | "AUDIT_RECEIPT"
-    | "HUMAN_DECISION";
+    | "HUMAN_DECISION"
+    | "KPI_AUDIT_SEALED";
   refId: string;
   payloadHash: string;
   prevHash: string;

@@ -54,6 +54,45 @@ class DiffingEngine:
         diff = difflib.ndiff(old_words, new_words)
         return '\n'.join(diff)
 
+    @staticmethod
+    def find_numeric_diffs(old_text: str, new_text: str) -> list:
+        """
+        Find pairs of changed numbers (old_val, new_val) using diff word analysis.
+        """
+        if not old_text or not new_text:
+            return []
+        import difflib
+        diff = list(difflib.ndiff(old_text.split(), new_text.split()))
+        changes = []
+        i = 0
+        while i < len(diff):
+            if diff[i].startswith('- '):
+                val_old = diff[i][2:]
+                # Check if it has digits
+                if re.search(r'\d', val_old):
+                    # Look ahead for a '+' number change within 5 words
+                    j = i + 1
+                    while j < len(diff) and j < i + 6:
+                        if diff[j].startswith('+ '):
+                            val_new = diff[j][2:]
+                            if re.search(r'\d', val_new) and val_old != val_new:
+                                # Keep context of units like lakh, crore, percent, % if present in adjacent words
+                                old_full = val_old
+                                new_full = val_new
+                                if i + 1 < len(diff) and diff[i+1].startswith('  '):
+                                    unit = diff[i+1][2:]
+                                    if unit.lower() in ['lakh', 'lakhs', 'crore', 'crores', 'percent', 'days', 'months', 'years', 'inr', 'usd', '%']:
+                                        old_full = f"{val_old} {unit}"
+                                if j + 1 < len(diff) and diff[j+1].startswith('  '):
+                                    unit = diff[j+1][2:]
+                                    if unit.lower() in ['lakh', 'lakhs', 'crore', 'crores', 'percent', 'days', 'months', 'years', 'inr', 'usd', '%']:
+                                        new_full = f"{val_new} {unit}"
+                                changes.append((old_full, new_full))
+                                break
+                        j += 1
+            i += 1
+        return changes
+
 class RuleEngine:
     @staticmethod
     def assign_department(domain: str, summary: str) -> str:

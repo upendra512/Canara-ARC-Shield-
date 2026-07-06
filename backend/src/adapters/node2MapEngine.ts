@@ -18,12 +18,6 @@ export interface MapRequest {
   baseline: BaselineClause[];
 }
 
-/**
- * Node 2 — MAP Engine (external microservice). Takes the circular's obligation
- * clauses and returns one compliance MAP per detected regulatory change. The
- * backend does no reasoning itself; it calls the service at NODE2_URL, which
- * wraps the Python engine and emits MAPs already shaped to our domain.
- */
 export const node2 = {
   async generate(req: MapRequest): Promise<ComplianceMap[]> {
     if (!config.agents.node2Url) {
@@ -31,4 +25,43 @@ export const node2 = {
     }
     return postJson<ComplianceMap[]>(`${config.agents.node2Url}/map`, req);
   },
+
+  async generateKPIPlan(csvText: string, kpisJson: string): Promise<KPIPlan> {
+    if (!config.agents.node2Url) {
+      throw fail("UPSTREAM_ERROR", "NODE2_URL is not configured");
+    }
+    return postJson<KPIPlan>(`${config.agents.node2Url}/kpi/plan`, {
+      csvText,
+      kpisJson,
+    });
+  },
 };
+
+export interface KPIResult {
+  kpi_name: string;
+  field: string;
+  target_value: number;
+  operator: string;
+  actual_value: number;
+  status: string;
+  department: string;
+  severity: string;
+  deviation: number;
+}
+
+export interface KPITask {
+  task: string;
+  department: string;
+  priority: string;
+  timeline: string;
+}
+
+export interface KPIPlan {
+  complianceScore: number;
+  kpiResults: KPIResult[];
+  summary: string;
+  gaps: string[];
+  roadmap: KPITask[];
+  rawReport: string;
+}
+

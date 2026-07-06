@@ -5,6 +5,7 @@ import { dashboardRouter } from "./dashboard.js";
 import { ledgerRouter } from "./ledger.js";
 import { copilotRouter } from "./copilot.js";
 import { systemsRouter } from "./systems.js";
+import { kpiRouter } from "./kpi.js";
 
 export const apiRouter = Router();
 
@@ -17,3 +18,5 @@ apiRouter.use("/dashboard", dashboardRouter);
 apiRouter.use("/ledger", ledgerRouter);
 apiRouter.use("/copilot", copilotRouter);
 apiRouter.use("/systems", systemsRouter);
+apiRouter.use("/kpi", kpiRouter);
+

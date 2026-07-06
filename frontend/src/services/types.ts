@@ -180,6 +180,8 @@ export interface DashboardSummary {
   riskAlerts: number;
   sections: SectionScore[];
   pipelineStages: Record<string, number>;
+  departmentDistribution: Record<string, number>;
+  severityDistribution: Record<string, number>;
 }
 
 export interface RoleWorkspace {
@@ -225,3 +227,42 @@ export interface ParameterValue {
   parameter: string;
   actualValue: string | number | boolean;
 }
+
+export interface KPIResult {
+  kpi_name: string;
+  field: string;
+  target_value: number;
+  operator: string;
+  actual_value: number;
+  status: string;
+  department: string;
+  severity: string;
+  deviation: number;
+}
+
+export interface KPITask {
+  task: string;
+  department: string;
+  priority: string;
+  timeline: string;
+}
+
+export interface KPIPlan {
+  complianceScore: number;
+  kpiResults: KPIResult[];
+  summary: string;
+  gaps: string[];
+  roadmap: KPITask[];
+  rawReport: string;
+}
+
+export interface KPIAuditReport {
+  id: string;
+  timestamp: string;
+  csvText: string;
+  kpisJson: string;
+  plan: KPIPlan;
+  sealed: boolean;
+  ledgerHash: string | null;
+}
+
