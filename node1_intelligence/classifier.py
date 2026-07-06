@@ -81,33 +81,67 @@ _KEYWORD_TRUST = 0.80
 _SEMANTIC_TRUST = 0.70
 
 
-def classify(text: str) -> Dict:
+def classify(text: str, doc_domain_key: Optional[str] = None) -> Dict:
     """Full taxonomy verdict for one clause-sized piece of text.
 
-    Runs the classification ladder: Tier 1 keyword scoring decides the domain and
-    the first-pass rule type; when that is weak (no match or one lukewarm keyword)
-    Tier 2 semantic matching against the taxonomy's example sentences gets a vote.
-    `source` records which tier produced the rule type, for the audit trail.
+    First tries the 3-Signal PolicyIdentifier. If a match is found (verdict is
+    UNCHANGED, MODIFIED, or AMBIGUOUS), we inherit the domain and section title from
+    the matched policy.
+    Otherwise, runs the fallback taxonomy classification ladder (keyword, semantic, LLM).
     """
-    domain_key, domain_def, domain_score = classify_domain(text)
+    try:
+        from node2_map_engine.identifier import PolicyIdentifier
+        identifier = PolicyIdentifier()
+        # We extract a potential section title from the beginning of the text to help title matches
+        first_line = text.split("\n")[0].strip()
+        id_result = identifier.identify(new_text=text, section_title=first_line)
+        
+        if id_result["verdict"] in ["UNCHANGED", "MODIFIED"]:
+            domain_key = id_result["domain"].lower()
+            domains = _taxonomy()["domains"]
+            domain_def = domains.get(domain_key, domains.get("kyc"))
+            
+            # Extract rule type based on matched section or keywords within the domain
+            rule_type, rule_conf = classify_rule_type(text, domain_def)
+            if not rule_type:
+                rule_type = "IDENTITY_VERIFICATION"  # default rule type
+                rule_conf = 0.95
+                
+            return {
+                "domain": domain_key,
+                "domainLabel": domain_def["label"],
+                "regSection": id_result["matched_clause"].get("section_title", domain_def["regSection"]),
+                "department": domain_def["department"],
+                "ruleType": rule_type,
+                "source": f"policy_db_match_{id_result['signal']}",
+                "obligationBearing": True,
+                "confidence": id_result["similarity"] if id_result["similarity"] > 0 else 0.95,
+            }
+    except Exception as e:
+        logger.warning(f"PolicyIdentifier match failed in Node 1 ({e}). Falling back to standard classifier.")
+
+    # FALLBACK: Original taxonomy classification ladder
+    if doc_domain_key and doc_domain_key in _taxonomy()["domains"]:
+        domain_key = doc_domain_key
+        domain_def = _taxonomy()["domains"][domain_key]
+        domain_score = 1
+    else:
+        domain_key, domain_def, domain_score = classify_domain(text)
+        
     rule_type, rule_conf = classify_rule_type(text, domain_def)
     source = "keyword" if rule_type else "none"
 
     if rule_type is None or rule_conf < _KEYWORD_TRUST:
         semantic = _semantic_vote(text)
         if semantic and semantic.get("ruleType"):
-            # Trust semantic when Tier 1 had nothing, or semantic is more confident.
             if rule_type is None or semantic["confidence"] >= rule_conf:
                 rule_type = semantic["ruleType"]
                 rule_conf = semantic["confidence"]
                 source = "semantic"
-                # Adopt semantic's domain only if Tier 1's domain was a pure guess.
                 if domain_score == 0 and semantic.get("domain"):
                     domain_key = semantic["domain"]
                     domain_def = _taxonomy()["domains"].get(domain_key, domain_def)
 
-    # Tier 3 — LLM. Only when keyword and semantic both stayed weak, and only if
-    # the LLM is configured (off by default). Constrained to the taxonomy's labels.
     if rule_type is None or rule_conf < _SEMANTIC_TRUST:
         llm_pick = _llm_vote(text, domain_key, domain_def)
         if llm_pick and llm_pick.get("ruleType"):

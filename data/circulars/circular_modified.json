@@ -1,0 +1,16 @@
+{
+  "circular_id": "RBI/2026-27/47",
+  "circular_date": "2026-07-06",
+  "regulator": "RBI",
+  "title": "Amendments to KYC and Cybersecurity Guidelines",
+  "chunks": [
+    {
+      "section_title": "Paragraph 65 - CKYC Registry Reliance",
+      "text": "Banks downloading valid CIF profiles from the Central KYC Registry (CKYCR) are exempt from physical re-verification. Re-verification is not mandatory for these downloaded CKYC profiles, provided there is no mismatch in customer data."
+    },
+    {
+      "section_title": "Section 8 - Data Encryption Standards",
+      "text": "All customer personal data and transaction data must be encrypted in transit using TLS 1.3 or higher protocols, and at rest using AES-256 or higher encryption algorithms. Encryption keys must be rotated at least once every 6 months to prevent unauthorized disclosure."
+    }
+  ]
+}

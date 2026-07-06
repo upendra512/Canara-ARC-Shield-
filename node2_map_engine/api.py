@@ -203,3 +203,48 @@ async def generate_maps(req: MapRequest) -> List[ComplianceMapOut]:
         )
 
     return maps
+
+
+# ---- KPI Planner Request / Response schemas --------------------------------
+
+class KPIPlanRequest(BaseModel):
+    csvText: str
+    kpisJson: str
+
+
+class KPITaskOut(BaseModel):
+    task: str
+    department: str
+    priority: str
+    timeline: str
+
+
+class KPIResultOut(BaseModel):
+    kpi_name: str
+    field: str
+    target_value: float
+    operator: str
+    actual_value: float
+    status: str
+    department: str
+    severity: str
+    deviation: float
+
+
+class KPIPlanResponse(BaseModel):
+    complianceScore: float
+    kpiResults: List[KPIResultOut]
+    summary: str
+    gaps: List[str]
+    roadmap: List[KPITaskOut]
+    rawReport: str
+
+
+@app.post("/kpi/plan", response_model=KPIPlanResponse)
+async def generate_kpi_plan(req: KPIPlanRequest) -> KPIPlanResponse:
+    """Assess compliance CSV against KPI JSON rules, map gaps, and generate a remediation plan."""
+    from node2_map_engine.kpi_planner import KPIPlanner
+    planner = KPIPlanner()
+    plan = await planner.generate_plan(req.csvText, req.kpisJson)
+    return KPIPlanResponse(**plan)
+

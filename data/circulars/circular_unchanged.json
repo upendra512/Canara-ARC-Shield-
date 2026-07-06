@@ -1,0 +1,12 @@
+{
+  "circular_id": "RBI/2026-27/48",
+  "circular_date": "2026-07-06",
+  "regulator": "RBI",
+  "title": "Advisory on Cash Transaction Reporting Limits",
+  "chunks": [
+    {
+      "section_title": "Section 24 - Cash Transaction Reporting (CTR)",
+      "text": "All cash transactions exceeding INR 10 Lakh or its equivalent in foreign currency, or a series of integrally connected cash transactions that aggregate to more than INR 10 Lakh in a single calendar month, must be reported to FIU-IND via Cash Transaction Reports (CTR) by the 15th of the succeeding month."
+    }
+  ]
+}

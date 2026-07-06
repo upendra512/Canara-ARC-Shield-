@@ -52,27 +52,41 @@ function isPdf(buffer: Buffer): boolean {
  */
 export const intakeService = {
   async ingest(file: IntakeFile): Promise<Circular> {
-    if (!isPdf(file.buffer)) {
-      throw fail("UNPROCESSABLE", "File is not a valid PDF (missing %PDF header)");
+    let text = "";
+    let pages = 1;
+    const isPdfFile = isPdf(file.buffer);
+
+    if (isPdfFile) {
+      const parsed = await parsePdf(file.buffer).catch(() => {
+        throw fail("UNPROCESSABLE", "Unable to parse PDF");
+      });
+      text = parsed.text ?? "";
+      pages = parsed.numpages;
+    } else {
+      // Treat as plain text / markdown file
+      text = file.buffer.toString("utf8");
+      pages = Math.ceil(text.split("\n").length / 45) || 1;
     }
 
-    const parsed = await parsePdf(file.buffer).catch(() => {
-      throw fail("UNPROCESSABLE", "Unable to parse PDF");
-    });
-    const text = parsed.text ?? "";
     if (text.trim().length === 0) {
-      throw fail("UNPROCESSABLE", "PDF contained no extractable text");
+      throw fail("UNPROCESSABLE", "Document contained no extractable text");
     }
 
     const documentHash = sha256(file.buffer);
     const id = randomId("CIR");
     const { refNumber, references } = extractRefs(text);
-    const storedPath = path.join(config.paths.documents, `${id}.pdf`);
+    
+    // Save stored file path (using .pdf for PDF and .md/.txt for others)
+    const isMd = file.originalName.endsWith(".md");
+    const ext = isPdfFile ? ".pdf" : (isMd ? ".md" : ".txt");
+    const storedPath = path.join(config.paths.documents, `${id}${ext}`);
+    
     await ensureDir(config.paths.documents);
     await fs.writeFile(storedPath, file.buffer);
-    // Parse-once: persist the extracted text so the pipeline never re-parses
-    // the PDF (re-parsing is wasteful and pdf-parse can be flaky on re-read).
-    await fs.writeFile(path.join(config.paths.documents, `${id}.txt`), text, "utf8");
+    
+    // Write normalized text file
+    const textPath = path.join(config.paths.documents, `${id}.txt`);
+    await fs.writeFile(textPath, text, "utf8");
 
     const circular: Circular = {
       id,
@@ -86,7 +100,7 @@ export const intakeService = {
         filename: file.originalName,
         mimeType: file.mimeType,
         bytes: file.buffer.length,
-        pages: parsed.numpages,
+        pages,
         sha256: documentHash,
         storedPath,
       },
@@ -103,7 +117,7 @@ export const intakeService = {
   async extractText(circularId: string): Promise<string> {
     const circular = await stateStore.getCircular(circularId);
     if (!circular) throw fail("NOT_FOUND", `Unknown circular ${circularId}`);
-    const textPath = circular.document.storedPath.replace(/\.pdf$/i, ".txt");
+    const textPath = path.join(path.dirname(circular.document.storedPath), `${circularId}.txt`);
     return fs.readFile(textPath, "utf8");
   },
 

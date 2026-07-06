@@ -1,0 +1,16 @@
+{
+  "circular_id": "RBI/2026-27/49",
+  "circular_date": "2026-07-06",
+  "regulator": "RBI",
+  "title": "New Directives on NPA Provisioning and FCNR Account Limits",
+  "chunks": [
+    {
+      "section_title": "Section 105 - NPA Provisioning Guidelines for Commercial Banks",
+      "text": "Banks must maintain a provisioning coverage ratio of at least 70% for all non-performing assets (NPA) to ensure buffer safety. Credit risk assessments must be updated quarterly to evaluate exposure."
+    },
+    {
+      "section_title": "Section 52 - FCNR Account Deposit Limits",
+      "text": "The maximum interest rate that can be offered on Foreign Currency Non-Resident (FCNR) deposits shall be capped at SOFR plus 250 basis points. Remittances must follow the standard FEMA channels."
+    }
+  ]
+}
