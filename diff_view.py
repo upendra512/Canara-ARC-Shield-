@@ -10,7 +10,7 @@ from node1_intelligence.extractor import _segments
 from compare_policies import Sha256HashingService, SentenceDiffService, PolicyComparisonEngine
 
 DB_PATH = "/home/aarushi/Canara-ARC-Shield-/mock_db.json"
-NEW_CIRCULAR_PATH = "/home/aarushi/Canara-ARC-Shield-/data/circulars/kyc_amended_2026.md"
+NEW_CIRCULAR_PATH = "/home/aarushi/Canara-ARC-Shield-/policies/kyc_amended.md"
 
 def main():
     print("=" * 80)

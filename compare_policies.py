@@ -22,8 +22,8 @@ logger = logging.getLogger("compare_policies")
 
 # File paths
 BASE_DIR = "/home/aarushi/Canara-ARC-Shield-"
-OLD_POLICY_PATH = os.path.join(BASE_DIR, "data/policies/kyc.md")
-NEW_CIRCULAR_PATH = os.path.join(BASE_DIR, "data/circulars/kyc_amended_2026.md")
+OLD_POLICY_PATH = os.path.join(BASE_DIR, "policies/kyc_baseline.md")
+NEW_CIRCULAR_PATH = os.path.join(BASE_DIR, "policies/kyc_amended.md")
 DB_PATH = os.path.join(BASE_DIR, "mock_db.json")
 REPORT_PATH = "/home/aarushi/.gemini/antigravity-cli/brain/73d0ac8e-63af-4cf7-bc84-cea4f389afb8/kyc_policy_comparison_report.md"
 
@@ -161,6 +161,14 @@ def main():
 
     # Step 2: Seed the database with the baseline kyc.md policy
     print("\n[STEP 1] Seeding baseline policies into the database...")
+    try:
+        import shutil
+        active_seed_dest = os.path.join(BASE_DIR, "data/policies/kyc.md")
+        os.makedirs(os.path.dirname(active_seed_dest), exist_ok=True)
+        shutil.copyfile(OLD_POLICY_PATH, active_seed_dest)
+        print(f"Copied {OLD_POLICY_PATH} to active database seeding path: {active_seed_dest}")
+    except Exception as e:
+        print(f"Warning: Could not copy baseline policy for database seeding: {e}")
     seed_database()
 
     # Step 3: Load the baseline database to track active clauses
