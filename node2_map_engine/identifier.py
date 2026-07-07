@@ -109,7 +109,15 @@ class PolicyIdentifier:
 
         # Search the caller-supplied baseline first (authoritative), then fall
         # back to the stored history. Baseline clauses arrive without embeddings.
-        clauses = list(baseline_clauses or []) + self.retriever._load_clauses()
+        _baseline_list = list(baseline_clauses or [])
+        # Tag baseline clauses so we can distinguish them from stored history
+        _baseline_circular_ids: set = set()
+        for bc in _baseline_list:
+            bc["_from_baseline"] = True
+            cid = bc.get("circular_id")
+            if cid:
+                _baseline_circular_ids.add(cid)
+        clauses = _baseline_list + self.retriever._load_clauses()
         # Exclude clauses from the current circular to avoid self-matching
         if circular_id:
             clauses = [c for c in clauses if c.get("circular_id") != circular_id]
@@ -238,6 +246,30 @@ class PolicyIdentifier:
                 old_text_clean = strip_markdown_headers(matched["raw_text"])
                 old_text_norm = self.normalizer.normalize_for_hash(old_text_clean)
                 old_hash = HashingEngine.generate_hash(old_text_norm)
+
+                # Guard against stale/orphaned clauses from previous uploads.
+                # If the text is hash-identical but the match is NOT from the
+                # caller-supplied baseline (i.e. it's a leftover stored clause
+                # from a deleted circular or a re-upload under a different ID),
+                # skip it — the clause is effectively new in this pipeline run.
+                is_from_baseline = matched.get("_from_baseline", False)
+                if new_hash == old_hash and not is_from_baseline:
+                    logger.info(
+                        "Signal 3: Hash-identical match against stored clause "
+                        f"from circular '{matched.get('circular_id', '?')}' "
+                        "(not in baseline). Treating as stale duplicate — "
+                        "proceeding as ADDED."
+                    )
+                    domain = matched.get("domain") or keyword_domain_fallback(new_text)
+                    return {
+                        "verdict": "ADDED",
+                        "domain": domain,
+                        "matched_clause": None,
+                        "similarity": 0.0,
+                        "signal": "semantic",
+                        "needs_review": False
+                    }
+
                 verdict = "UNCHANGED" if new_hash == old_hash else "MODIFIED"
                 return {
                     "verdict": verdict,
